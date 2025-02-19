@@ -1,22 +1,32 @@
-.vscode/
-.vs/
-
+# Ignorar archivos generados por premake
 build/
+
+# Ignorar archivos binarios y ejecutables
 bin/
 
-.exe
-.dll
-.lib
-.exp
-.o
-.a
-.pdb
-.idb
-.obj
-.telg
-.log
-.cache
-.ilk
-.user
-.suo
-.code-workspace
+# Ignorar archivos de usuario de Visual Studio
+*.vcxproj.user
+*.suo
+*.sln
+
+# Ignorar archivos de configuración local
+.vs/
+
+# Ignorar archivos de depuración y temporales
+*.pdb
+*.ilk
+*.obj
+*.log
+*.idb
+*.exp
+*.lib
+*.dll
+
+# Ignorar archivos de CMake (si los hubiera)
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Ignorar archivos de sistema
+Thumbs.db
+.DS_Store

@@ -20,8 +20,12 @@ project "LSystemApp"
 
     -- Archivos de código fuente
     files {
-        "src/**.h",
+        "src/**.hpp",
         "src/**.cpp",
+        "include/**.hpp",
+
+        "src/**.h",
+        "src/**.cc",
         "include/**.h"
     }
 
