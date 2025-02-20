@@ -4,11 +4,10 @@
 #include <cmath>
 #include "../include/LSystem.hpp"
 
-// Definimos las constantes para los ángulos y la longitud de las ramas
-const float ANGLE = 25.0f; // Ángulo de rotación
-const float LENGTH = 10.0f; // Longitud de cada segmento
+#define ANGLE (25.0f) 
+#define LENGTH (10.0f) 
+#define M_PI (3.14159265358979323846264338327950288)
 
-// Estructura para representar un punto en 2D
 struct Point {
     float x, y;
     Point(float x = 0, float y = 0) : x(x), y(y) {}
@@ -26,8 +25,8 @@ void drawTree(const std::string& lSystemString, sf::RenderWindow& window) {
         case 'F': // Dibuja una línea hacia adelante
         {
             Point newPosition(
-                currentPosition.x + LENGTH * cos(currentAngle * 3.1416f / 180.0f),
-                currentPosition.y + LENGTH * sin(currentAngle * 3.1416f / 180.0f)
+                currentPosition.x + LENGTH * cos(currentAngle * M_PI / 180.0f),
+                currentPosition.y + LENGTH * sin(currentAngle * M_PI / 180.0f)
             );
 
             // Dibuja una línea usando SFML

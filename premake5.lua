@@ -1,4 +1,5 @@
 workspace "ProyectoLSystems"
+    platforms {"x64"}
     configurations { "Debug", "Release" }
     location "build"
 
@@ -32,7 +33,7 @@ project "LSystemApp"
     -- Directorios de inclusión
     includedirs {
         "include",
-        "C:/SFML/include"
+        "include/SFML"
     }
 
     -- Bibliotecas de SFML (estáticas)
@@ -40,7 +41,10 @@ project "LSystemApp"
         links {
             "sfml-graphics-s",
             "sfml-window-s",
-            "sfml-system-s"
+            "sfml-system-s",
+            "opengl32",  -- Biblioteca de OpenGL
+            "winmm",     -- Biblioteca multimedia de Windows
+            "gdi32"      -- Biblioteca GDI de Windows
         }
         defines { "SFML_STATIC" }  -- Define este símbolo para compilación estática
 
@@ -48,17 +52,20 @@ project "LSystemApp"
         links {
             "sfml-graphics-s-d",
             "sfml-window-s-d",
-            "sfml-system-s-d"
+            "sfml-system-s-d",
+            "opengl32",  -- Biblioteca de OpenGL
+            "winmm",     -- Biblioteca multimedia de Windows
+            "gdi32"      -- Biblioteca GDI de Windows
         }
         defines { "SFML_STATIC" }  -- Define este símbolo para compilación estática
 
     -- Directorios de bibliotecas
     libdirs {
-        "C:/SFML/lib"
+        "lib/SFML"
     }
 
     -- Configuración específica para Windows
     filter "system:windows"
         systemversion "latest"
-        staticruntime "On"
+        staticruntime "Off"
         defines { "PLATFORM_WINDOWS" }
