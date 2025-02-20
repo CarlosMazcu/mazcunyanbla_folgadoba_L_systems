@@ -11,4 +11,4 @@ This project implements a procedural tree generation system using L-systems and 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/your-repository.git
+   git clone https://github.com/CarlosMazcu/mazcunyanbla_folgadoba_L_systems.git
