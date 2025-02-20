@@ -3,77 +3,30 @@
 #include <stack>
 #include <cmath>
 #include "../include/LSystem.hpp"
+#include "../include/TreeRendered.hpp"
+
 
 #define ANGLE (25.0f) 
 #define LENGTH (10.0f) 
-#define M_PI (3.14159265358979323846264338327950288)
-
-struct Point {
-    float x, y;
-    Point(float x = 0, float y = 0) : x(x), y(y) {}
-};
-
-// Función para dibujar el árbol usando SFML
-void drawTree(const std::string& lSystemString, sf::RenderWindow& window) {
-    std::stack<Point> positionStack;
-    std::stack<float> angleStack;
-    Point currentPosition(400, 600); // Posición inicial en la pantalla
-    float currentAngle = -90.0f; // Ángulo inicial (apuntando hacia arriba)
-
-    for (char c : lSystemString) {
-        switch (c) {
-        case 'F': // Dibuja una línea hacia adelante
-        {
-            Point newPosition(
-                currentPosition.x + LENGTH * cos(currentAngle * M_PI / 180.0f),
-                currentPosition.y + LENGTH * sin(currentAngle * M_PI / 180.0f)
-            );
-
-            // Dibuja una línea usando SFML
-            sf::Vertex line[] = {
-                sf::Vertex(sf::Vector2f(currentPosition.x, currentPosition.y), sf::Color::Green),
-                sf::Vertex(sf::Vector2f(newPosition.x, newPosition.y), sf::Color::Green)
-            };
-            window.draw(line, 2, sf::Lines);
-
-            currentPosition = newPosition;
-            break;
-        }
-        case '+': // Gira a la derecha
-            currentAngle += ANGLE;
-            break;
-        case '-': // Gira a la izquierda
-            currentAngle -= ANGLE;
-            break;
-        case '[': // Guarda la posición y el ángulo actual
-            positionStack.push(currentPosition);
-            angleStack.push(currentAngle);
-            break;
-        case ']': // Restaura la posición y el ángulo anterior
-            currentPosition = positionStack.top();
-            positionStack.pop();
-            currentAngle = angleStack.top();
-            angleStack.pop();
-            break;
-        }
-    }
-}
 
 int main() {
-    // Definimos el axioma y las reglas de producción
-    std::string axiom = "F";
+    // Configuración del L-system
+    std::string axiom = "X";
     std::vector<std::pair<char, std::string>> rules = {
-        {'F', "F[+F][-F]"}
+        {'X', "F[+X][&-X]F[@]"}, // Rama principal con bifurcaciones, hojas y giros invertidos
+        {'F', "F[<F]!F[#]"},      // Extensión de líneas con ramas secundarias más finas y efectos de ancho
+        {'L', "{F+F+F+F}F"}       // Patrón de polígono (cuadrado) para simular flores o pequeñas hojas
     };
 
-    // Creamos el L-system
+    // Crear el L-system
     LSystem lSystem(axiom, rules);
+    lSystem.generate(6); // Número de iteraciones
 
-    // Generamos el árbol después de 4 iteraciones
-    lSystem.generate(4);
-
-    // Creamos una ventana de SFML
+    // Crear la ventana de SFML
     sf::RenderWindow window(sf::VideoMode(800, 600), "L-system Tree");
+
+    // Crear el renderizador del árbol
+    TreeRenderer treeRenderer(lSystem, window, ANGLE, LENGTH);
 
     // Bucle principal de la ventana
     while (window.isOpen()) {
@@ -84,7 +37,7 @@ int main() {
         }
 
         window.clear();
-        drawTree(lSystem.getCurrent(), window); // Dibujamos el árbol
+        treeRenderer.draw(); // Dibujar el árbol
         window.display();
     }
 
