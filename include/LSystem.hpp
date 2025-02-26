@@ -1,32 +1,30 @@
-#ifndef __LSYSTEM_H__
-#define __LSYSTEM_H__ 1
+#ifndef LSYSTEM_HPP
+#define LSYSTEM_HPP
 
 #include <string>
-#include <unordered_map>
 #include <vector>
+#include <map>
 
 class LSystem {
+private:
+    std::string originalAxiom;
+    std::string current;
+    std::map<char, std::string> rules;
+
 public:
     LSystem(const std::string& axiom, const std::vector<std::pair<char, std::string>>& rules);
-
-    // Aplica las reglas de producción una vez
     void iterate();
-    // Aplica las reglas un número específico de veces
-    void generate(int iterations) {
-        for (int i = 0; i < iterations; ++i) {
-            iterate();
-        }
-    }
+    void generate(int iterations);
+    std::string getCurrent() const;
+    void reset();
 
-    // Devuelve la cadena actual
-    std::string getCurrent() const {
-        return current;
-    }
+    struct Axiom {
+        char letra;
+        std::string regla;
+    };
 
-private:
-    std::string axiom;
-    std::unordered_map<char, std::string> rules;
-    std::string current;
+    static std::vector<Axiom> InitAxiomMap(std::vector<Axiom>& axiomMap);
+
 };
 
-#endif // LSYSTEM_H
+#endif
