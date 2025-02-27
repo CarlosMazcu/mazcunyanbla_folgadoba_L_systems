@@ -3,69 +3,16 @@
 #include <stack>
 #include <cmath>
 #include "../include/LSystem.hpp"
+#include "../include/TreeRendered.hpp"
 
-#define ANGLE (25.0f) 
-#define LENGTH (10.0f) 
-#define M_PI (3.14159265358979323846264338327950288)
-
-struct Point {
-    float x, y;
-    Point(float x = 0, float y = 0) : x(x), y(y) {}
-};
-
-// Función para dibujar el árbol usando SFML
-void drawTree(const std::string& lSystemString, sf::RenderWindow& window) {
-    std::stack<Point> positionStack;
-    std::stack<float> angleStack;
-    Point currentPosition(400, 600); // Posición inicial en la pantalla
-    float currentAngle = -90.0f; // Ángulo inicial (apuntando hacia arriba)
-
-    for (char c : lSystemString) {
-        switch (c) {
-        case 'F': // Dibuja una línea hacia adelante
-        {
-            Point newPosition(
-                currentPosition.x + LENGTH * cos(currentAngle * M_PI / 180.0f),
-                currentPosition.y + LENGTH * sin(currentAngle * M_PI / 180.0f)
-            );
-
-            // Dibuja una línea usando SFML
-            sf::Vertex line[] = {
-                sf::Vertex(sf::Vector2f(currentPosition.x, currentPosition.y), sf::Color::Green),
-                sf::Vertex(sf::Vector2f(newPosition.x, newPosition.y), sf::Color::Green)
-            };
-            window.draw(line, 2, sf::Lines);
-
-            currentPosition = newPosition;
-            break;
-        }
-        case '+': // Gira a la derecha
-            currentAngle += ANGLE;
-            break;
-        case '-': // Gira a la izquierda
-            currentAngle -= ANGLE;
-            break;
-        case '[': // Guarda la posición y el ángulo actual
-            positionStack.push(currentPosition);
-            angleStack.push(currentAngle);
-            break;
-        case ']': // Restaura la posición y el ángulo anterior
-            currentPosition = positionStack.top();
-            positionStack.pop();
-            currentAngle = angleStack.top();
-            angleStack.pop();
-            break;
-        }
-    }
-}
+#define INITIAL_ANGLE (25.0f)  // Ángulo inicial
+#define INITIAL_LENGTH (10.0f) // Longitud inicial de la línea
 
 int main() {
-
-    std::vector<LSystem::Axiom> axiomMap;
-
-    LSystem::InitAxiomMap(axiomMap);
-
+    std::vector<std::pair<char, std::string>> reglas;
     int opcion;
+    std::vector<LSystem::Axiom> axiomMap;
+    LSystem::InitAxiomMap(axiomMap);
 
     std::cout << "Seleccione un axioma:\n";
     for (size_t i = 0; i < axiomMap.size(); ++i) {
@@ -79,19 +26,31 @@ int main() {
     }
 
     LSystem::Axiom seleccionado = axiomMap[opcion - 1];
+    reglas = { {seleccionado.letra, seleccionado.regla} };
 
-    std::vector<std::pair<char, std::string>> reglas = { {seleccionado.letra, seleccionado.regla} };
+    std::vector<std::pair<char, std::string>> reglasARBOLCOMPUESTO = {
+       {'A', "F[+A]F[-A]+A"},    // Ramificación compleja con recursividad
+       {'F', "FF"}        // Regla para crecimiento de ramas
+    };
+
+    // ESTO PARA EL ARBOL COMPUESTO
+   /* LSystem lSystem("A", reglasARBOLCOMPUESTO);
+    lSystem.generate(5);*/
+
+    //ESTO PARA EL AXIOMMAP
     LSystem lSystem(std::string(1, seleccionado.letra), reglas);
     lSystem.generate(4);
 
-    sf::RenderWindow window(sf::VideoMode(800, 600), "L-system Tree");
-
+    sf::RenderWindow window(sf::VideoMode(800, 600), "L-System Complex Tree");
     sf::View view = window.getDefaultView();
+
+    TreeRenderer treeRenderer(lSystem, window, INITIAL_ANGLE, INITIAL_LENGTH);
 
     sf::Vector2f lastMousePos;
     bool dragging = false;
     bool gKeyPressed = false;
     bool rKeyPressed = false;
+
     while (window.isOpen()) {
         sf::Event event;
         while (window.pollEvent(event)) {
@@ -103,24 +62,14 @@ int main() {
                     view.zoom(0.9f);
                 else
                     view.zoom(1.1f);
-
             }
-            else if (event.type == sf::Event::KeyReleased) {
-                if (event.key.code == sf::Keyboard::G)
-                    gKeyPressed = false;
-                if (event.key.code == sf::Keyboard::R)
-                    rKeyPressed = false;
-            }
-
             else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right) {
                 dragging = true;
                 lastMousePos = sf::Vector2f(sf::Mouse::getPosition(window));
             }
-
             else if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Right) {
                 dragging = false;
             }
-
             else if (event.type == sf::Event::MouseMoved && dragging) {
                 sf::Vector2f newMousePos = sf::Vector2f(sf::Mouse::getPosition(window));
                 sf::Vector2f delta = lastMousePos - newMousePos;
@@ -129,7 +78,7 @@ int main() {
             }
         }
         float zoomFactor = view.getSize().x / window.getDefaultView().getSize().x;
-        float moveSpeed = 1.0f * zoomFactor;
+        float moveSpeed = 2.0f * zoomFactor;
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
             view.move(-moveSpeed, 0);
@@ -140,21 +89,27 @@ int main() {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
             view.move(0, moveSpeed);
 
-
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::G) && !gKeyPressed) {
             lSystem.generate(1);
             gKeyPressed = true;
         }
+        if (!sf::Keyboard::isKeyPressed(sf::Keyboard::G) && gKeyPressed) {
+            gKeyPressed = false;
+        }
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::R) && !rKeyPressed) {
             lSystem.reset();
-            lSystem.generate(1);
+            lSystem.generate(4);
             rKeyPressed = true;
+        }
+
+        if (!sf::Keyboard::isKeyPressed(sf::Keyboard::R) && rKeyPressed) {
+            rKeyPressed = false;
         }
 
         window.setView(view);
         window.clear();
-        drawTree(lSystem.getCurrent(), window);
+        treeRenderer.draw();
         window.display();
     }
 

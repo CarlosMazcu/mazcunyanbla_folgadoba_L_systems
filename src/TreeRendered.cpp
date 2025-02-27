@@ -16,7 +16,7 @@ const float ANGLE_INCREMENT_STEP = 5.0f;    // Paso para incrementar/disminuir e
 const float MIN_ANGLE_INCREMENT = 1.0f;     // Valor mínimo del incremento de ángulo
 
 // Otras constantes útiles
-const float PI = 3.1416f;                   // Valor de 
+const float PI = 3.1416f;                   // Valor de pi
 
 TreeRenderer::TreeRenderer(const LSystem& lSystem, sf::RenderWindow& window, float angle, float length)
     : lSystem(lSystem), window(window), ANGLE(angle), LENGTH(length) {}
@@ -96,6 +96,8 @@ void TreeRenderer::drawTree(const std::string& lSystemString)
             break;
         case '|': // Girar 180 grados
             currentAngle += 180.0f;
+            currentAngle = fmod(currentAngle, 360.0f);
+            if (currentAngle < 0) currentAngle += 360.0f;
             break;
         case '[': // Guardar el estado actual
             positionStack.push(currentPosition);

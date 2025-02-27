@@ -24,16 +24,19 @@ project "LSystemApp"
         "src/**.hpp",
         "src/**.cpp",
         "include/**.hpp",
+        "backends/*.hpp",
 
         "src/**.h",
         "src/**.cc",
-        "include/**.h"
+        "include/**.h",
+        "backends/*.cpp"
     }
 
     -- Directorios de inclusión
     includedirs {
         "include",
-        "include/SFML"
+        "include/SFML",
+        "backends"
     }
 
     -- Bibliotecas de SFML (estáticas)

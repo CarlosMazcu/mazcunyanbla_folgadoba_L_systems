@@ -33,15 +33,17 @@ std::string LSystem::getCurrent() const {
 void LSystem::reset() {
     current = originalAxiom;
 }
-
-std::vector<LSystem::Axiom> LSystem::InitAxiomMap(std::vector<Axiom>& axiomMap)
-{
+std::vector<LSystem::Axiom> LSystem::InitAxiomMap(std::vector<Axiom>& axiomMap) {
     axiomMap = {
-        {'F', "F[+F][-F]"},  // Árbol fractal básico
-        {'X', "F-[[X]+X]+F[+FX]-X"},  // Helecho fractal
-        {'G', "G[+F]-G"},  // Crecimiento ramificado
-        {'Y', "F+F--F+F"},  // Copo de nieve de Koch (F en lugar de Y)
-        {'Z', "F[-F]+F"}    // Estructura coral
+        {'F', "F[+F][-F]"},// Árbol fractal básico
+        {'F', "F[+F][-F]F@"},// Árbol básico con ramas y hojas
+        {'X', "F[+X][-X]FXF@"},  // Árbol complejo con ramas y hojas
+        {'X', "F[+X][-X]FX"}, // Axiom más complejo con ramificación adicional
+        {'F', "F[+F]F[-F]F@"},  // Arbol con ramas densas y hojas
+        {'F', "FF+[+F-F-F]-[-F+F+F]"},
+        {'F', "F[+F]F[-F]F[#]"},
+
     };
     return axiomMap;
 }
+
