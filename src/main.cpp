@@ -11,6 +11,118 @@
 #define INITIAL_ANGLE (25.0f)  // Ángulo inicial
 #define INITIAL_LENGTH (10.0f) // Longitud inicial de la línea
 
+
+void imguiWindow(std::vector<std::pair<char, std::string>>& rules) {
+    ImGui::SetNextWindowPos(ImVec2(800.0f, 0.0f));
+    ImGui::SetNextWindowSize(ImVec2(200.0f, 600.0f));
+
+    ImGui::Begin("Ejemplo ImGui", nullptr, ImGuiWindowFlags_NoTitleBar
+                                            | ImGuiWindowFlags_NoResize
+                                            | ImGuiWindowFlags_NoMove
+                                            | ImGuiWindowFlags_NoCollapse);
+
+    ImGui::Text("ABC of rules");
+    if (ImGui::Button("F"))
+    {
+
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("f"))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("+"))
+    {
+
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("-"))
+    {
+
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("|"))
+    {
+
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("["))
+    {
+
+    }
+    if (ImGui::Button("]"))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("#"))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("!"))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("@"))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("{"))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("}"))
+    {
+
+    }
+    if (ImGui::Button(">"))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("<"))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("&"))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button("("))
+    {
+
+    }
+    ImGui::SameLine();
+
+    if (ImGui::Button(")"))
+    {
+
+    }
+
+    ImGui::Text("RULES:");
+    ImGui::Separator();
+
+
+    ImGui::End();  
+}
+
+
 int main() {
     std::vector<std::pair<char, std::string>> reglas;
     int opcion;
@@ -41,13 +153,13 @@ int main() {
     lSystem.generate(5);*/
 
     //ESTO PARA EL AXIOMMAP
-    LSystem lSystem(std::string(1, seleccionado.letra), reglas);
-    lSystem.generate(4);
-
-    sf::RenderWindow window(sf::VideoMode(800, 600), "L-System Complex Tree");
+    sf::RenderWindow window(sf::VideoMode(1000, 600), "L-System Complex Tree");
     ImGui::SFML::Init(window);
     sf::View view = window.getDefaultView();
     sf::Clock deltaClock;
+
+    LSystem lSystem(std::string(1, seleccionado.letra), reglas);
+    lSystem.generate(4);
 
     TreeRenderer treeRenderer(lSystem, window, INITIAL_ANGLE, INITIAL_LENGTH);
 
@@ -85,14 +197,8 @@ int main() {
 
         ImGui::SFML::Update(window, deltaClock.restart());
 
-        // Crear una ventana en ImGui
-        ImGui::Begin("Ejemplo ImGui");  // Comienza la ventana
-        ImGui::Text("¡Hola desde ImGui y SFML!");  // Añadir texto
-        if (ImGui::Button("Cerrar"))
-        {
-            window.close();
-        }
-        ImGui::End();  // Fin de la ventana
+
+        imguiWindow(reglas);
 
         float zoomFactor = view.getSize().x / window.getDefaultView().getSize().x;
         float moveSpeed = 2.0f * zoomFactor;
