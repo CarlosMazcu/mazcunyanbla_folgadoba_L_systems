@@ -5,6 +5,9 @@
 #include "../include/LSystem.hpp"
 #include "../include/TreeRendered.hpp"
 
+#include <imgui.h>
+#include <imgui-SFML.h>
+
 #define INITIAL_ANGLE (25.0f)  // Ángulo inicial
 #define INITIAL_LENGTH (10.0f) // Longitud inicial de la línea
 
@@ -42,7 +45,9 @@ int main() {
     lSystem.generate(4);
 
     sf::RenderWindow window(sf::VideoMode(800, 600), "L-System Complex Tree");
+    ImGui::SFML::Init(window);
     sf::View view = window.getDefaultView();
+    sf::Clock deltaClock;
 
     TreeRenderer treeRenderer(lSystem, window, INITIAL_ANGLE, INITIAL_LENGTH);
 
@@ -77,6 +82,18 @@ int main() {
                 lastMousePos = newMousePos;
             }
         }
+
+        ImGui::SFML::Update(window, deltaClock.restart());
+
+        // Crear una ventana en ImGui
+        ImGui::Begin("Ejemplo ImGui");  // Comienza la ventana
+        ImGui::Text("¡Hola desde ImGui y SFML!");  // Añadir texto
+        if (ImGui::Button("Cerrar"))
+        {
+            window.close();
+        }
+        ImGui::End();  // Fin de la ventana
+
         float zoomFactor = view.getSize().x / window.getDefaultView().getSize().x;
         float moveSpeed = 2.0f * zoomFactor;
 
@@ -109,9 +126,11 @@ int main() {
 
         window.setView(view);
         window.clear();
+        ImGui::SFML::Render(window);
         treeRenderer.draw();
         window.display();
     }
+    ImGui::SFML::Shutdown();
 
     return 0;
 }
