@@ -5,6 +5,7 @@ LSystem::LSystem(const std::string& axiom, const std::vector<std::pair<char, std
     for (const auto& rule : rules) {
         this->rules[rule.first] = rule.second;
     }
+    iterations = 4;
 }
 
 void LSystem::iterate() {

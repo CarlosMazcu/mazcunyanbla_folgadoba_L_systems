@@ -1,5 +1,5 @@
-#ifndef LSYSTEM_HPP
-#define LSYSTEM_HPP
+#ifndef __LSYSTEM_HPP__
+#define __LSYSTEM_HPP__ 1
 
 #include <string>
 #include <vector>
@@ -17,6 +17,7 @@ public:
     void generate(int iterations);
     std::string getCurrent() const;
     void reset();
+    int iterations;
 
     struct Axiom {
         char letra;
