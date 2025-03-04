@@ -1,9 +1,11 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
+#include <set>
 #include <stack>
 #include <cmath>
 #include "../include/LSystem.hpp"
 #include "../include/TreeRendered.hpp"
+#include <unordered_map>
 
 #include <imgui.h>
 #include <imgui-SFML.h>
@@ -11,17 +13,24 @@
 #define INITIAL_ANGLE (25.0f)  // Ángulo inicial
 #define INITIAL_LENGTH (10.0f) // Longitud inicial de la línea
 
-
-void imguiWindow(std::vector<std::pair<char, std::string>>& rules, LSystem& ls) {
+void imguiWindow(std::unordered_map<std::string, std::unordered_map<char, std::string>>& rules, LSystem& ls) {
     static int selectedRuleIndex = -1;
+    static std::string axiomInput;  // Cadena para el axioma de entrada
+    static std::string selectedAxiom;  // Axioma seleccionado
     static std::string ruleString;
+    static std::string productionString;  // Cadena para la producción de entrada
+    static std::set<char> potentialAxioms;
+    static bool clearAxioms = false;
     ImGui::SetNextWindowPos(ImVec2(800.0f, 0.0f));
-    ImGui::SetNextWindowSize(ImVec2(200.0f, 600.0f));
+    ImGui::SetNextWindowSize(ImVec2(400.0f, 600.0f));
 
     ImGui::Begin("Editor de Reglas", nullptr, ImGuiWindowFlags_NoTitleBar
         | ImGuiWindowFlags_NoResize
         | ImGuiWindowFlags_NoMove
         | ImGuiWindowFlags_NoCollapse);
+
+    //ImGui::Text("Axiom:");
+    //ImGui::InputText("##Axiom", &axiomInput[0], 256);  // Campo para ingresar el axioma
 
     ImGui::Text("ABC of rules:");
     ImGui::Separator();
@@ -34,7 +43,7 @@ void imguiWindow(std::vector<std::pair<char, std::string>>& rules, LSystem& ls) 
 
     for (char ruleChar : ruleChars) {
         if (ImGui::Button(std::string(1, ruleChar).c_str(), ImVec2(40, 30))) {
-            ruleString += ruleChar; // Agregar el símbolo a la regla actual
+            productionString += ruleChar; // Agregar el símbolo a la producción actual
         }
 
         counter++;
@@ -43,52 +52,87 @@ void imguiWindow(std::vector<std::pair<char, std::string>>& rules, LSystem& ls) 
         }
     }
 
+    ImGui::InputText("##ProductionString", &productionString[0], 256);
+
+
+    if (ImGui::Button("Analyze Rule")) {
+        potentialAxioms.clear();
+        for (char& ch : productionString) {
+            if (isalpha(ch)) {
+                potentialAxioms.insert(ch);
+            }
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Delete"))
+    {
+        productionString.erase();
+    }
+
+    if (!potentialAxioms.empty()) {
+        ImGui::Text("Select Axiom:");
+        for (char axiom : potentialAxioms) {
+            std::string button_id = std::string(1, axiom) + "##" + std::to_string(axiom);
+            if (ImGui::Button(&button_id[0], ImVec2(40, 30))) {
+                axiomInput = std::string(1, axiom);
+                // Verificar si ya existe una regla para este carácter bajo este axioma
+                if (rules[axiomInput].find(axiom) != rules[axiomInput].end()) {
+                    // Concatenar la nueva regla a la existente
+                    rules[axiomInput][axiom] += "; " + productionString;
+                }
+                else {
+                    // Crear una nueva entrada si no existe
+                    rules[axiomInput][axiom] = productionString;
+                }
+                productionString.clear();
+                selectedRuleIndex = -1;
+                clearAxioms = true;
+            }
+            counter++;
+            if (counter % columnCount != 0) {
+                ImGui::SameLine();
+            }
+        }
+        if (clearAxioms) {
+            potentialAxioms.clear();
+            clearAxioms = false;
+        }
+    }
     ImGui::Separator();
-
-    // Campo de texto editable para la regla actual
-    ImGui::InputText("##RuleString", &ruleString[0], ImGuiInputTextFlags_ReadOnly);
-
-    // Botón para agregar la regla a la lista
-    if (ImGui::Button("Add Rule")) {
-        if (!ruleString.empty()) {
-            rules.emplace_back(ruleString[0], ruleString.substr(1)); // Guardar la regla
-            ruleString.clear();
+    ImGui::Text("Rules:");
+    for (auto& axiom : rules) {
+        for (auto& rule : axiom.second) {
+            std::string ruleDisplay = axiom.first + " (" + rule.first + "): " + rule.second;
+            // Usar el axioma como clave para la selección y mostrar cada regla en una nueva línea
+            if (ImGui::Selectable(ruleDisplay.c_str(), selectedAxiom == axiom.first)) {
+                selectedAxiom = axiom.first;  // Establecer el axioma seleccionado
+            }
         }
     }
 
-    ImGui::Separator();
-
-    ImGui::Text("RULES:");
-
-    for (int i = 0; i < rules.size(); i++) {
-        std::string ruleText = std::string(1, rules[i].first) + " -> " + rules[i].second;
-
-        if (ImGui::Selectable(ruleText.c_str(), selectedRuleIndex == i)) {
-            selectedRuleIndex = i; // Guardar el índice de la regla seleccionada
+    // Opciones para la regla seleccionada
+    if (!selectedAxiom.empty()) {
+        ImGui::Text("Selected Axiom: %s", selectedAxiom.c_str());
+        if (ImGui::Button("Delete Axiom")) {
+            rules.erase(selectedAxiom);
+            selectedAxiom.clear();  // Limpiar la selección
         }
     }
 
-    // Mostrar la regla seleccionada
-    if (selectedRuleIndex >= 0 && selectedRuleIndex < rules.size()) {
-        ImGui::Separator();
-        ImGui::Text("Selected:");
-        ImGui::Text("%c -> %s", rules[selectedRuleIndex].first, rules[selectedRuleIndex].second.c_str());
-        ImGui::Separator();
-        ImGui::SetCursorPosX((200.0f - 100.0f) * 0.5f);
-        if (ImGui::Button("Run", ImVec2(100.0f, 30.0f)))
-        {
-            ls.reset();
-        }
-    }
     ImGui::End();
 }
 
 
+
 int main() {
-    std::vector<std::pair<char, std::string>> reglas;
+    std::unordered_map<std::string, std::unordered_map<char, std::string>> axiomRules;
+
+    // Añadir axiomas y reglas
+    axiomRules["F"] = { {'F', "FF+[+F-F-F]-[-F+F+F]"} };
+    axiomRules["X"] = { {'X', "F[+X]F[-X]+X"}, {'F', "FF"} };
     int opcion;
-    std::vector<LSystem::Axiom> axiomMap;
-    LSystem::InitAxiomMap(axiomMap);
+    //std::vector<LSystem::Axiom> axiomMap;
+    //LSystem::InitAxiomMap(axiomMap);
 
     //std::cout << "Seleccione un axioma:\n";
     //for (size_t i = 0; i < axiomMap.size(); ++i) {
@@ -102,10 +146,10 @@ int main() {
     //}
 
     //LSystem::Axiom seleccionado = axiomMap[opcion - 1];
-    for (int i = 0; i < axiomMap.size(); i++)
-    {
-        reglas.push_back({axiomMap[i].letra, axiomMap[i].regla});
-    }
+    //for (int i = 0; i < axiomMap.size(); i++)
+    //{
+    //    reglas.push_back({axiomMap[i].letra, axiomMap[i].regla});
+    //}
 
     //std::vector<std::pair<char, std::string>> reglasARBOLCOMPUESTO = {
     //   {'A', "F[+A]F[-A]+A"},    // Ramificación compleja con recursividad
@@ -117,12 +161,13 @@ int main() {
     lSystem.generate(5);*/
 
     //ESTO PARA EL AXIOMMAP
-    sf::RenderWindow window(sf::VideoMode(1000, 600), "L-System Complex Tree");
+    sf::RenderWindow window(sf::VideoMode(1200, 600), "L-System Complex Tree");
     ImGui::SFML::Init(window);
     sf::View view = window.getDefaultView();
     sf::Clock deltaClock;
 
-    LSystem lSystem(std::string(1, axiomMap[3].letra), reglas);
+    std::string ax = "F";
+    LSystem lSystem(ax, axiomRules["F"]);
     lSystem.generate(lSystem.iterations);
 
     TreeRenderer treeRenderer(lSystem, window, INITIAL_ANGLE, INITIAL_LENGTH);
@@ -196,7 +241,7 @@ int main() {
         window.setView(view);
         window.clear();
         
-        imguiWindow(reglas, lSystem);
+        imguiWindow(axiomRules, lSystem);
         
         ImGui::SFML::Render(window);
         
