@@ -2,27 +2,32 @@
 #define __LSYSTEM_HPP__ 1
 
 #include <string>
-#include <vector>
 #include <unordered_map>
-
+#include <vector>
+#include <random>
 
 class LSystem {
+public:
+    LSystem();
+
+    void setAxiom(const std::string& axiom);
+    void addRule(char predecessor, const std::string& successor);
+    void generate(int iterations);
+    void reset();
+    std::string getCurrent() const;
+    void iterate();
+    void generateGuidedRules(int action);
+    void generateRandomRules(); 
+
+    void nextGuidedStep(int choice); // Nueva función para modo guiado
+
+    int getGuidedStep() const { return guidedStep; }
+    void resetGuided();
 private:
     std::string originalAxiom;
     std::string current;
     std::unordered_map<char, std::string> rules;
-
-public:
-    LSystem(const std::string& axiom, const std::unordered_map<char, std::string>& rules);
-
-    void iterate();
-    void generate(int iterations);
-    std::string getCurrent() const;
-    void reset();
-    int iterations;
-
-    //static std::vector<Axiom> InitAxiomMap(std::vector<Axiom>& axiomMap);
-
+    int guidedStep = 0;
 };
 
 #endif
