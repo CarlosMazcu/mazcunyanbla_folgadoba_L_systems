@@ -1,5 +1,6 @@
 #include "TreeToObjConverter.hpp"
 
+
 bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, float initialAngle, float initialLength, float initialWidth) {
     segments.clear();
     leafPoints.clear();
@@ -23,7 +24,6 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
     Point3D left(-1.0f, 0.0f, 0.0f);    // Vector izquierda (eje -X)
     Point3D up(0.0f, 0.0f, 1.0f);       // Vector arriba (eje Z)
 
-    float currentAngle = initialAngle * degToRad;
     float lineWidth = initialWidth;
     float currentLength = initialLength;
     float angleIncrement = initialAngle;
@@ -32,11 +32,13 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
     // Añadir variación aleatoria a las rotaciones para más naturalidad
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
+
     // Recorrer la cadena del L-system
     for (char c : lSystemString) {
+
         switch (c) {
         case 'F': { // Dibujar una línea hacia adelante
-            // Añadimos una pequeña rotación aleatoria para dar más naturalidad a las ramas
+
             if (randomnessFactor > 0.0f && ((float)rand() / RAND_MAX) < 0.3f * randomnessFactor) {
                 // Pequeña rotación aleatoria en pitch y yaw
                 float smallRandomPitch = (((float)rand() / RAND_MAX) * 10.0f - 5.0f) * randomnessFactor * degToRad;
@@ -113,54 +115,189 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
         }
         case '+': { // Girar a la izquierda (rotación alrededor del eje up)
             float angle = (invertTurns ? -angleIncrement : angleIncrement) * degToRad;
+
             // Añadir algo de variación aleatoria al ángulo (±10%)
             float randomFactor = 1.0f + (((float)rand() / RAND_MAX) * 0.2f - 0.1f);
             angle *= randomFactor;
 
-            // Rotación de heading y left alrededor del eje up
-            float cosA = cos(angle);
-            float sinA = sin(angle);
+            // MODIFICACIÓN CLAVE: Introducir componente 3D al ángulo
+            // En lugar de rotar solo en el plano horizontal, ahora distribuimos
+            // la rotación en una esfera (componentes en los tres ejes)
+
+            // 1. Rotación alrededor del eje up (yaw) - efecto tradicional 2D
+            float yawAngle = angle * (1.0f - 0.5f * randomnessFactor);
+            float cosYaw = cos(yawAngle);
+            float sinYaw = sin(yawAngle);
 
             Point3D newHeading(
-                heading.x * cosA + left.x * sinA,
-                heading.y * cosA + left.y * sinA,
-                heading.z * cosA + left.z * sinA
+                heading.x* cosYaw + left.x * sinYaw,
+                heading.y* cosYaw + left.y * sinYaw,
+                heading.z* cosYaw + left.z * sinYaw
             );
 
             Point3D newLeft(
-                left.x * cosA - heading.x * sinA,
-                left.y * cosA - heading.y * sinA,
-                left.z * cosA - heading.z * sinA
+                left.x* cosYaw - heading.x * sinYaw,
+                left.y* cosYaw - heading.y * sinYaw,
+                left.z* cosYaw - heading.z * sinYaw
             );
 
+            // 2. Añadir una componente de rotación alrededor del eje left (pitch)
+            // Solo si el factor de aleatoriedad es > 0
+            if (randomnessFactor > 0.0f) {
+                // El factor de pitch es proporcional al factor de aleatoriedad
+                float pitchIntensity = 0.7f * randomnessFactor;
+                float pitchAngle = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * angle * pitchIntensity;
+
+                float cosPitch = cos(pitchAngle);
+                float sinPitch = sin(pitchAngle);
+
+                Point3D tempHeading(
+                    newHeading.x * cosPitch + up.x * sinPitch,
+                    newHeading.y * cosPitch + up.y * sinPitch,
+                    newHeading.z * cosPitch + up.z * sinPitch
+                );
+
+                Point3D tempUp(
+                    up.x * cosPitch - newHeading.x * sinPitch,
+                    up.y * cosPitch - newHeading.y * sinPitch,
+                    up.z * cosPitch - newHeading.z * sinPitch
+                );
+
+                newHeading = tempHeading;
+                up = tempUp;
+            }
+
+            // 3. También podemos añadir una componente de roll si queremos
+            if (randomnessFactor > 0.0f && ((float)rand() / RAND_MAX) < 0.3f * randomnessFactor) {
+                float rollIntensity = 0.4f * randomnessFactor;
+                float rollAngle = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * angle * rollIntensity;
+
+                float cosRoll = cos(rollAngle);
+                float sinRoll = sin(rollAngle);
+
+                Point3D tempLeft(
+                    newLeft.x * cosRoll + up.x * sinRoll,
+                    newLeft.y * cosRoll + up.y * sinRoll,
+                    newLeft.z * cosRoll + up.z * sinRoll
+                );
+
+                Point3D tempUp(
+                    up.x * cosRoll - newLeft.x * sinRoll,
+                    up.y * cosRoll - newLeft.y * sinRoll,
+                    up.z * cosRoll - newLeft.z * sinRoll
+                );
+
+                newLeft = tempLeft;
+                up = tempUp;
+            }
+
+            // Normalizar los vectores y asegurar que forman un sistema ortogonal
             heading = normalizeVector(newHeading);
             left = normalizeVector(newLeft);
+            up = normalizeVector(up);
+
+            // Re-ortogonalizar para evitar acumulación de errores numéricos
+            up = normalizeVector(Point3D(
+                left.y * heading.z - left.z * heading.y,
+                left.z * heading.x - left.x * heading.z,
+                left.x * heading.y - left.y * heading.x
+            ));
+            left = normalizeVector(Point3D(
+                up.y * heading.z - up.z * heading.y,
+                up.z * heading.x - up.x * heading.z,
+                up.x * heading.y - up.y * heading.x
+            ));
+
             break;
         }
         case '-': { // Girar a la derecha (rotación opuesta a +)
+            // Lógica similar a '+' pero con ángulo invertido
             float angle = (invertTurns ? angleIncrement : -angleIncrement) * degToRad;
-            // Añadir algo de variación aleatoria al ángulo (±10%)
             float randomFactor = 1.0f + (((float)rand() / RAND_MAX) * 0.2f - 0.1f);
             angle *= randomFactor;
 
-            // Rotación de heading y left alrededor del eje up
-            float cosA = cos(angle);
-            float sinA = sin(angle);
+            // Componente yaw (plano horizontal)
+            float yawAngle = angle * (1.0f - 0.5f * randomnessFactor);
+            float cosYaw = cos(yawAngle);
+            float sinYaw = sin(yawAngle);
 
             Point3D newHeading(
-                heading.x * cosA + left.x * sinA,
-                heading.y * cosA + left.y * sinA,
-                heading.z * cosA + left.z * sinA
+                heading.x * cosYaw + left.x * sinYaw,
+                heading.y * cosYaw + left.y * sinYaw,
+                heading.z * cosYaw + left.z * sinYaw
             );
 
             Point3D newLeft(
-                left.x * cosA - heading.x * sinA,
-                left.y * cosA - heading.y * sinA,
-                left.z * cosA - heading.z * sinA
+                left.x * cosYaw - heading.x * sinYaw,
+                left.y * cosYaw - heading.y * sinYaw,
+                left.z * cosYaw - heading.z * sinYaw
             );
 
+            // Componente pitch (inclinación arriba/abajo)
+            if (randomnessFactor > 0.0f) {
+                float pitchIntensity = 0.7f * randomnessFactor;
+                float pitchAngle = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * -angle * pitchIntensity;
+
+                float cosPitch = cos(pitchAngle);
+                float sinPitch = sin(pitchAngle);
+
+                Point3D tempHeading(
+                    newHeading.x * cosPitch + up.x * sinPitch,
+                    newHeading.y * cosPitch + up.y * sinPitch,
+                    newHeading.z * cosPitch + up.z * sinPitch
+                );
+
+                Point3D tempUp(
+                    up.x * cosPitch - newHeading.x * sinPitch,
+                    up.y * cosPitch - newHeading.y * sinPitch,
+                    up.z * cosPitch - newHeading.z * sinPitch
+                );
+
+                newHeading = tempHeading;
+                up = tempUp;
+            }
+
+            // Componente roll (rotación sobre el eje)
+            if (randomnessFactor > 0.0f && ((float)rand() / RAND_MAX) < 0.3f * randomnessFactor) {
+                float rollIntensity = 0.4f * randomnessFactor;
+                float rollAngle = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * -angle * rollIntensity;
+
+                float cosRoll = cos(rollAngle);
+                float sinRoll = sin(rollAngle);
+
+                Point3D tempLeft(
+                    newLeft.x * cosRoll + up.x * sinRoll,
+                    newLeft.y * cosRoll + up.y * sinRoll,
+                    newLeft.z * cosRoll + up.z * sinRoll
+                );
+
+                Point3D tempUp(
+                    up.x * cosRoll - newLeft.x * sinRoll,
+                    up.y * cosRoll - newLeft.y * sinRoll,
+                    up.z * cosRoll - newLeft.z * sinRoll
+                );
+
+                newLeft = tempLeft;
+                up = tempUp;
+            }
+
+            // Normalizar y corregir ortogonalidad
             heading = normalizeVector(newHeading);
             left = normalizeVector(newLeft);
+            up = normalizeVector(up);
+
+            // Re-ortogonalizar
+            up = normalizeVector(Point3D(
+                left.y * heading.z - left.z * heading.y,
+                left.z * heading.x - left.x * heading.z,
+                left.x * heading.y - left.y * heading.x
+            ));
+            left = normalizeVector(Point3D(
+                up.y * heading.z - up.z * heading.y,
+                up.z * heading.x - up.x * heading.z,
+                up.x * heading.y - up.y * heading.x
+            ));
+
             break;
         }
         case '^': { // Inclinar hacia arriba (pitch up - rotación alrededor del eje left)
@@ -270,7 +407,7 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             left.z = -left.z;
             break;
         }
-        case '[': // Guardar el estado actual
+        case '[': { // Guardar el estado actual
             positionStack.push(currentPosition);
             headingStack.push(heading);
             leftStack.push(left);
@@ -278,7 +415,42 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             lineWidthStack.push(lineWidth);
             lengthStack.push(currentLength);
             angleIncrementStack.push(angleIncrement);
+
+            // Posibilidad de inclinar la rama en dirección Z
+            if (randomnessFactor > 0.0f && ((float)rand() / RAND_MAX) < 0.2f * randomnessFactor) {
+                // Rotación moderada hacia el eje Z (20-40 grados)
+                float zAngle = (20.0f + ((float)rand() / RAND_MAX) * 20.0f) * degToRad;
+                bool positiveZ = ((float)rand() / RAND_MAX > 0.5f);
+
+                // Aplicar rotación para inclinar hacia el eje Z
+                float cosZ = cos(zAngle);
+                float sinZ = sin(zAngle * (positiveZ ? 1.0f : -1.0f));
+
+                // Rotar alrededor de left (que apunta hacia el eje X negativo)
+                Point3D newHeading(
+                    heading.x * cosZ - up.x * sinZ,
+                    heading.y * cosZ - up.y * sinZ,
+                    heading.z * cosZ - up.z * sinZ
+                );
+
+                Point3D newUp(
+                    up.x * cosZ + heading.x * sinZ,
+                    up.y * cosZ + heading.y * sinZ,
+                    up.z * cosZ + heading.z * sinZ
+                );
+
+                heading = normalizeVector(newHeading);
+                up = normalizeVector(newUp);
+
+                // Recalcular left para mantener sistema ortogonal
+                left = normalizeVector(Point3D(
+                    up.y * heading.z - up.z * heading.y,
+                    up.z * heading.x - up.x * heading.z,
+                    up.x * heading.y - up.y * heading.x
+                ));
+            }
             break;
+        }
         case ']': // Restaurar el estado anterior
             if (!positionStack.empty()) {
                 currentPosition = positionStack.top();
@@ -326,58 +498,19 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
         case ')': // Incrementar ángulo
             angleIncrement += 5.0f;
             break;
-            // Si no reconocemos el símbolo, lo ignoramos
-        }
-
-        // Cada cierto tiempo, añadir una pequeña rotación aleatoria en los ejes
-        // para dar más naturalidad a las ramas (1/5 de probabilidad)
-        if (rand() % 5 == 0) {
-            // Pequeña rotación aleatoria en el pitch (arriba/abajo)
-            float randomPitch = ((float)rand() / RAND_MAX * 10.0f - 5.0f) * degToRad;
-            float cosPitch = cos(randomPitch);
-            float sinPitch = sin(randomPitch);
-
-            Point3D newHeading(
-                heading.x * cosPitch - up.x * sinPitch,
-                heading.y * cosPitch - up.y * sinPitch,
-                heading.z * cosPitch - up.z * sinPitch
-            );
-
-            Point3D newUp(
-                up.x * cosPitch + heading.x * sinPitch,
-                up.y * cosPitch + heading.y * sinPitch,
-                up.z * cosPitch + heading.z * sinPitch
-            );
-
-            heading = normalizeVector(newHeading);
-            up = normalizeVector(newUp);
-
-            // Pequeña rotación aleatoria en el roll (inclinación)
-            float randomRoll = ((float)rand() / RAND_MAX * 10.0f - 5.0f) * degToRad;
-            float cosRoll = cos(randomRoll);
-            float sinRoll = sin(randomRoll);
-
-            Point3D newLeft(
-                left.x * cosRoll - up.x * sinRoll,
-                left.y * cosRoll - up.y * sinRoll,
-                left.z * cosRoll - up.z * sinRoll
-            );
-
-            newUp = Point3D(
-                up.x * cosRoll + left.x * sinRoll,
-                up.y * cosRoll + left.y * sinRoll,
-                up.z * cosRoll + left.z * sinRoll
-            );
-
-            left = normalizeVector(newLeft);
-            up = normalizeVector(newUp);
         }
     }
+
 
     return true;
 }
 
 bool TreeToObjConverter::generateOBJ() {
+    // Variable de progreso dummy que no se usa
+    std::atomic<float> dummyProgress(0.0f);
+    return generateOBJ(dummyProgress);
+}
+bool TreeToObjConverter::generateOBJ(std::atomic<float>& progress) {
     // Asegurarse de que el directorio assets existe
     std::string assetsDir = "../assets/";
 
@@ -388,6 +521,9 @@ bool TreeToObjConverter::generateOBJ() {
     system("if not exist \"..\\assets\" mkdir \"..\\assets\"");
 #endif
 
+    // Iniciar progreso
+    progress = 0.05f;
+
     std::ofstream objFile(outputFilename);
     if (!objFile.is_open()) {
         std::cerr << "Error: No se pudo abrir el archivo " << outputFilename << std::endl;
@@ -395,43 +531,70 @@ bool TreeToObjConverter::generateOBJ() {
     }
 
     // Escribir encabezado
+    progress = 0.06f;
     objFile << "# Árbol 3D generado desde L-System\n";
     objFile << "# Generado con Tree-to-OBJ Converter\n\n";
 
     std::vector<Point3D> vertices;
     std::vector<Face> faces;
 
-    // Generar geometría para cada segmento
+    // Calcular el número total de elementos a procesar
+    size_t totalSegments = segments.size();
+    size_t totalLeaves = generateLeaves ? leafPoints.size() : 0;
+    size_t processedItems = 0;
+
+    // Fase 1: Generar geometría para cada segmento - asignamos solo 10% (5%-15%)
     for (const auto& segment : segments) {
         addCylinder(segment, vertices, faces);
+        processedItems++;
+        progress = 0.05f + (0.1f * processedItems / totalSegments);
     }
 
-    // Generar hojas
+    // Generar hojas - asignamos solo 5% (15%-20%)
+    processedItems = 0;
     if (generateLeaves) {
         for (const auto& leafPoint : leafPoints) {
             addLeaf(leafPoint, leafSize, vertices, faces);
+            processedItems++;
+            progress = 0.15f + (0.05f * processedItems / totalLeaves);
         }
     }
 
-    // Escribir vértices
-    for (const auto& v : vertices) {
-        objFile << "v " << v.x << " " << v.y << " " << v.z << "\n";
+    // Fase 2: Escribir vértices - asignamos 10% (20%-30%)
+    size_t totalVertices = vertices.size();
+    for (size_t i = 0; i < totalVertices; i++) {
+        objFile << "v " << vertices[i].x << " " << vertices[i].y << " " << vertices[i].z << "\n";
+
+        // Actualizar progreso cada cierto número de vértices para no ralentizar
+        if (i % 1000 == 0 || i == totalVertices - 1) {
+            progress = 0.2f + (0.1f * (i + 1) / totalVertices);
+        }
     }
 
-    // Escribir normales (simplificado por ahora)
+    // Marcador entre secciones
     objFile << "\n# Normales\n";
 
-    // Escribir caras (índices base-1 para formato OBJ)
+    // Fase 3: Escribir caras - asignamos 70% (30%-100%) - LA PARTE MÁS PESADA
+    progress = 0.3f;
     objFile << "\n# Caras\n";
-    for (const auto& face : faces) {
+
+    size_t totalFaces = faces.size();
+    for (size_t i = 0; i < totalFaces; i++) {
         objFile << "f ";
-        for (int idx : face.vertexIndices) {
+        for (int idx : faces[i].vertexIndices) {
             objFile << (idx + 1) << " ";
         }
         objFile << "\n";
+
+        // Actualizar progreso cada cierto número de caras para no ralentizar
+        if (i % 1000 == 0 || i == totalFaces - 1) {
+            progress = 0.3f + (0.7f * (i + 1) / totalFaces);
+        }
     }
 
     objFile.close();
+    progress = 1.0f;
+
     std::cout << "Archivo OBJ generado: " << outputFilename << std::endl;
     return true;
 }

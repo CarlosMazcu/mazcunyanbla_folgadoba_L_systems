@@ -34,8 +34,12 @@ project "LSystemApp"
         -- Archivos de ImGui
         "backends/imgui/*.cpp",
         "backends/imgui/*.h",
+        "backends/ImGuiFileDialog-0.5.2/*.cpp",
+        "backends/ImGuiFileDialog-0.5.2/*.h",
         "backends/imgui-sfml/*.cpp",
         "backends/imgui-sfml/*.h"
+
+        
 --[[         "backends/imgui/imgui_demo.cpp",  -- Opcional: Demo de ImGui
         "backends/imgui/imgui_draw.cpp",
         "backends/imgui/imgui_widgets.cpp",
@@ -50,9 +54,14 @@ project "LSystemApp"
         "include",            -- Directorios de inclusión generales
         "include/SFML",       -- Directorio de SFML
         "backends/imgui",     -- Directorio de ImGui en "backends"
-        "backends/imgui-sfml" -- Directorio de ImGui-SFML en "backends"
-    }
+        "backends/imgui-sfml", -- Directorio de ImGui-SFML en "backends"
+        "backends/ImGuiFileDialog-0.5.2"
 
+    }
+    
+    defines {
+      "IMGUIFILEDIALOG_IMPLEMENTATION"
+  }
     -- Configuración de bibliotecas y vinculación
     filter "configurations:Release"
         links {

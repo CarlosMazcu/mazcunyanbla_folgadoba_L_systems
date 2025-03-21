@@ -56,6 +56,7 @@ public:
     bool convertLSystemToObj(const std::string& lSystemString, float initialAngle, float initialLength, float initialWidth);
 
     // Método para generar el archivo OBJ
+    bool generateOBJ(std::atomic<float>& progress);
     bool generateOBJ();
 
 private:
