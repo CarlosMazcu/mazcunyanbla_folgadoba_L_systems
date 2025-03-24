@@ -24,7 +24,7 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
     Point3D left(-1.0f, 0.0f, 0.0f);    // Vector izquierda (eje -X)
     Point3D up(0.0f, 0.0f, 1.0f);       // Vector arriba (eje Z)
 
-    float lineWidth = initialWidth;
+    float lineWidth = initialWidth * branchMultiplier;
     float currentLength = initialLength;
     float angleIncrement = initialAngle;
     bool invertTurns = false;
@@ -500,7 +500,11 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             break;
         }
     }
-
+    int leafMarkers = 0;
+    for (char c : lSystemString) {
+        if (c == '@') leafMarkers++;
+    }
+    std::cout << "Leaf markers found in L-system: " << leafMarkers << std::endl;
 
     return true;
 }
@@ -511,17 +515,14 @@ bool TreeToObjConverter::generateOBJ() {
     return generateOBJ(dummyProgress);
 }
 bool TreeToObjConverter::generateOBJ(std::atomic<float>& progress) {
-    // Asegurarse de que el directorio assets existe
     std::string assetsDir = "../assets/";
-
-    // Crear el directorio si no existe (código específico para sistemas POSIX/Unix/Linux/Mac)
+    
 #ifdef __unix__
     system("mkdir -p ../assets");
 #elif defined(_WIN32) || defined(WIN32)
     system("if not exist \"..\\assets\" mkdir \"..\\assets\"");
 #endif
 
-    // Iniciar progreso
     progress = 0.05f;
 
     std::ofstream objFile(outputFilename);
@@ -530,7 +531,6 @@ bool TreeToObjConverter::generateOBJ(std::atomic<float>& progress) {
         return false;
     }
 
-    // Escribir encabezado
     progress = 0.06f;
     objFile << "# Árbol 3D generado desde L-System\n";
     objFile << "# Generado con Tree-to-OBJ Converter\n\n";
@@ -538,19 +538,16 @@ bool TreeToObjConverter::generateOBJ(std::atomic<float>& progress) {
     std::vector<Point3D> vertices;
     std::vector<Face> faces;
 
-    // Calcular el número total de elementos a procesar
     size_t totalSegments = segments.size();
     size_t totalLeaves = generateLeaves ? leafPoints.size() : 0;
     size_t processedItems = 0;
 
-    // Fase 1: Generar geometría para cada segmento - asignamos solo 10% (5%-15%)
     for (const auto& segment : segments) {
         addCylinder(segment, vertices, faces);
         processedItems++;
         progress = 0.05f + (0.1f * processedItems / totalSegments);
     }
 
-    // Generar hojas - asignamos solo 5% (15%-20%)
     processedItems = 0;
     if (generateLeaves) {
         for (const auto& leafPoint : leafPoints) {
@@ -560,21 +557,17 @@ bool TreeToObjConverter::generateOBJ(std::atomic<float>& progress) {
         }
     }
 
-    // Fase 2: Escribir vértices - asignamos 10% (20%-30%)
     size_t totalVertices = vertices.size();
     for (size_t i = 0; i < totalVertices; i++) {
         objFile << "v " << vertices[i].x << " " << vertices[i].y << " " << vertices[i].z << "\n";
 
-        // Actualizar progreso cada cierto número de vértices para no ralentizar
         if (i % 1000 == 0 || i == totalVertices - 1) {
             progress = 0.2f + (0.1f * (i + 1) / totalVertices);
         }
     }
 
-    // Marcador entre secciones
     objFile << "\n# Normales\n";
 
-    // Fase 3: Escribir caras - asignamos 70% (30%-100%) - LA PARTE MÁS PESADA
     progress = 0.3f;
     objFile << "\n# Caras\n";
 
@@ -586,7 +579,6 @@ bool TreeToObjConverter::generateOBJ(std::atomic<float>& progress) {
         }
         objFile << "\n";
 
-        // Actualizar progreso cada cierto número de caras para no ralentizar
         if (i % 1000 == 0 || i == totalFaces - 1) {
             progress = 0.3f + (0.7f * (i + 1) / totalFaces);
         }
@@ -612,39 +604,32 @@ void TreeToObjConverter::addCylinder(const Segment3D& segment, std::vector<Point
         direction.z * direction.z
     );
 
-    if (length < 0.0001f) return; // Evitar segmentos de longitud cero
+    if (length < 0.0001f) return; 
 
-    // Normalizar dirección
     direction = normalizeVector(direction);
 
-    // Calcular vectores perpendiculares para crear el círculo
     Point3D perpendicular1, perpendicular2;
     calculatePerpendicularVectors(direction, perpendicular1, perpendicular2);
 
-    // Guardar índice base para las caras
     int baseIndex = vertices.size();
 
-    // Crear vértices para los dos círculos (inicio y fin del segmento)
     for (int i = 0; i < cylinderResolution; ++i) {
         float angle = 2.0f * M_PI * i / cylinderResolution;
         float cosA = std::cos(angle);
         float sinA = std::sin(angle);
 
-        // Vector radial
         Point3D radial = {
             perpendicular1.x * cosA + perpendicular2.x * sinA,
             perpendicular1.y * cosA + perpendicular2.y * sinA,
             perpendicular1.z * cosA + perpendicular2.z * sinA
         };
 
-        // Vértices para el círculo inicial
         vertices.push_back({
             segment.start.x + radial.x * segment.thickness,
             segment.start.y + radial.y * segment.thickness,
             segment.start.z + radial.z * segment.thickness
             });
 
-        // Vértices para el círculo final
         vertices.push_back({
             segment.end.x + radial.x * segment.thickness,
             segment.end.y + radial.y * segment.thickness,
@@ -652,19 +637,16 @@ void TreeToObjConverter::addCylinder(const Segment3D& segment, std::vector<Point
             });
     }
 
-    // Crear caras triangulares para el cilindro
     for (int i = 0; i < cylinderResolution; ++i) {
         int i0 = baseIndex + i * 2;
         int i1 = baseIndex + ((i + 1) % cylinderResolution) * 2;
         int i2 = i1 + 1;
         int i3 = i0 + 1;
 
-        // Añadir cara (quad dividido en dos triángulos)
         faces.push_back({ i0, i1, i3 });
         faces.push_back({ i1, i2, i3 });
     }
 
-    // Añadir tapas (opcional)
     // Tapa base
     int centerBaseIndex = vertices.size();
     vertices.push_back(segment.start);
@@ -687,86 +669,468 @@ void TreeToObjConverter::addCylinder(const Segment3D& segment, std::vector<Point
 }
 
 void TreeToObjConverter::addLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
-    // Índice base para esta hoja
+    if (!generateLeaves) return;
+
+    // Seleccionar el tipo de hoja según la configuración actual
+    switch (leafType) {
+    case LeafType::NEEDLE:
+        addNeedleLeaf(position, size, vertices, faces);
+        break;
+    case LeafType::BROAD:
+        addBroadLeaf(position, size, vertices, faces);
+        break;
+    case LeafType::PALM:
+        addPalmLeaf(position, size, vertices, faces);
+        break;
+    case LeafType::SIMPLE:
+    default:
+        addSimpleLeaf(position, size, vertices, faces);
+        break;
+    }
+}
+
+void TreeToObjConverter::calculateLeafOrientation(const Point3D& position, Point3D& right, Point3D& up, Point3D& forward) {
+    // Orientación aleatoria con preferencia hacia arriba
+    float yaw = randomFloat(0.0f, 2.0f * M_PI);
+    float pitch = randomFloat(0.0f, M_PI / 3.0f); // Máximo 60 grados desde la vertical
+
+    // Crear vectores de orientación básicos
+    right = { std::cos(yaw), 0.0f, std::sin(yaw) };
+    up = { 0.0f, 1.0f, 0.0f };
+    forward = { -std::sin(yaw), 0.0f, std::cos(yaw) };
+
+    // Aplicar inclinación (pitch)
+    float cp = std::cos(pitch);
+    float sp = std::sin(pitch);
+
+    Point3D tempForward = {
+        forward.x * cp + up.x * sp,
+        forward.y * cp + up.y * sp,
+        forward.z * cp + up.z * sp
+    };
+
+    Point3D tempUp = {
+        up.x * cp - forward.x * sp,
+        up.y * cp - forward.y * sp,
+        up.z * cp - forward.z * sp
+    };
+
+    forward = normalizeVector(tempForward);
+    up = normalizeVector(tempUp);
+
+    // Asegurar ortogonalidad recalculando right
+    right = {
+        up.y * forward.z - up.z * forward.y,
+        up.z * forward.x - up.x * forward.z,
+        up.x * forward.y - up.y * forward.x
+    };
+    right = normalizeVector(right);
+}
+
+void TreeToObjConverter::addSimpleLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
+    // Calcular vectores de orientación
+    Point3D right, up, forward;
+    calculateLeafOrientation(position, right, up, forward);
+
+    // Añadir variación aleatoria al tamaño
+    float actualSize = size * randomFloat(0.8f, 1.2f);
+
     int baseIndex = vertices.size();
 
-    // Crear orientación aleatoria para la hoja
-    // Generar ángulos aleatorios
-    float yaw = ((float)rand() / RAND_MAX) * 2.0f * M_PI;   // 0-360 grados
-    float pitch = ((float)rand() / RAND_MAX) * M_PI / 2.0f; // 0-90 grados
-    float roll = ((float)rand() / RAND_MAX) * M_PI / 4.0f;  // 0-45 grados
-
-    // Calcular vectores de orientación usando los ángulos aleatorios
-    float cy = cos(yaw), sy = sin(yaw);
-    float cp = cos(pitch), sp = sin(pitch);
-    float cr = cos(roll), sr = sin(roll);
-
-    // Matriz de rotación 3D completa (yaw, pitch, roll)
-    Point3D right, up, forward;
-
-    // Vector derecha (right)
-    right.x = cy * cr + sy * sp * sr;
-    right.y = sr * cp;
-    right.z = -sy * cr + cy * sp * sr;
-
-    // Vector arriba (up)
-    up.x = -cy * sr + sy * sp * cr;
-    up.y = cr * cp;
-    up.z = sy * sr + cy * sp * cr;
-
-    // Vector adelante (forward)
-    forward.x = sy * cp;
-    forward.y = -sp;
-    forward.z = cy * cp;
-
-    // Normalizar vectores
-    right = normalizeVector(right);
-    up = normalizeVector(up);
-    forward = normalizeVector(forward);
-
-    // Ahora creamos una forma de hoja más compleja con vértices alrededor de la posición
-    float leafLength = size * 1.5f;
-    float leafWidth = size * 0.8f;
-
-    // Vértices de la hoja (forma de diamante alargado)
+    // Vértices de la hoja simple (forma de diamante alargado)
     vertices.push_back(position); // Centro
 
+    // Vértice derecho
     vertices.push_back({
-        position.x + right.x * leafWidth * 0.5f,
-        position.y + right.y * leafWidth * 0.5f,
-        position.z + right.z * leafWidth * 0.5f
-        }); // Derecha
+        position.x + right.x * actualSize * 0.5f,
+        position.y + right.y * actualSize * 0.5f,
+        position.z + right.z * actualSize * 0.5f
+        });
 
+    // Vértice punta
     vertices.push_back({
-        position.x + forward.x * leafLength,
-        position.y + forward.y * leafLength,
-        position.z + forward.z * leafLength
-        }); // Punta
+        position.x + forward.x * actualSize * 1.5f,
+        position.y + forward.y * actualSize * 1.5f,
+        position.z + forward.z * actualSize * 1.5f
+        });
 
+    // Vértice izquierdo
     vertices.push_back({
-        position.x - right.x * leafWidth * 0.5f,
-        position.y - right.y * leafWidth * 0.5f,
-        position.z - right.z * leafWidth * 0.5f
-        }); // Izquierda
+        position.x - right.x * actualSize * 0.5f,
+        position.y - right.y * actualSize * 0.5f,
+        position.z - right.z * actualSize * 0.5f
+        });
 
+    // Vértice base
     vertices.push_back({
-        position.x - forward.x * leafLength * 0.3f,
-        position.y - forward.y * leafLength * 0.3f,
-        position.z - forward.z * leafLength * 0.3f
-        }); // Base
+        position.x - forward.x * actualSize * 0.3f,
+        position.y - forward.y * actualSize * 0.3f,
+        position.z - forward.z * actualSize * 0.3f
+        });
 
-    // Añadir las caras (ahora triangulares para mejor renderizado)
+    // Caras frontales
     faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 2 }); // Cara superior derecha
     faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 3 }); // Cara superior izquierda
     faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 4 }); // Cara inferior izquierda
     faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 1 }); // Cara inferior derecha
 
-    // Añadir caras para el reverso de la hoja
-    faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 }); // Cara superior derecha reversa
-    faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 }); // Cara superior izquierda reversa
-    faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 3 }); // Cara inferior izquierda reversa
-    faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 4 }); // Cara inferior derecha reversa
+    // Caras traseras (invertir orden para que las normales apunten hacia afuera)
+    faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 }); // Inversa superior derecha
+    faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 }); // Inversa superior izquierda
+    faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 3 }); // Inversa inferior izquierda
+    faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 4 }); // Inversa inferior derecha
 }
+
+void TreeToObjConverter::addNeedleLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
+    // Calcular vectores de orientación
+    Point3D right, up, forward;
+    calculateLeafOrientation(position, right, up, forward);
+
+    // Para coníferas, la orientación tiende más hacia arriba
+    forward.y += 0.5f;
+    forward = normalizeVector(forward);
+
+    // Recalcular vectores ortogonales
+    right = {
+        up.y * forward.z - up.z * forward.y,
+        up.z * forward.x - up.x * forward.z,
+        up.x * forward.y - up.y * forward.x
+    };
+    right = normalizeVector(right);
+
+    up = {
+        forward.y * right.z - forward.z * right.y,
+        forward.z * right.x - forward.x * right.z,
+        forward.x * right.y - forward.y * right.x
+    };
+    up = normalizeVector(up);
+
+    // Añadir variación aleatoria al tamaño
+    float actualSize = size * randomFloat(0.8f, 1.2f);
+
+    // Longitud y grosor de la aguja
+    float needleLength = actualSize * 3.0f;
+    float needleWidth = actualSize * 0.1f;
+
+    int baseIndex = vertices.size();
+
+    // Base de la aguja
+    Point3D base = position;
+
+    // Punta de la aguja
+    Point3D tip = {
+        base.x + forward.x * needleLength,
+        base.y + forward.y * needleLength,
+        base.z + forward.z * needleLength
+    };
+
+    // Vértices en la base (forma de prisma delgado)
+    vertices.push_back({
+        base.x + right.x * needleWidth + up.x * needleWidth / 2,
+        base.y + right.y * needleWidth + up.y * needleWidth / 2,
+        base.z + right.z * needleWidth + up.z * needleWidth / 2
+        });
+
+    vertices.push_back({
+        base.x - right.x * needleWidth + up.x * needleWidth / 2,
+        base.y - right.y * needleWidth + up.y * needleWidth / 2,
+        base.z - right.z * needleWidth + up.z * needleWidth / 2
+        });
+
+    vertices.push_back({
+        base.x - right.x * needleWidth - up.x * needleWidth / 2,
+        base.y - right.y * needleWidth - up.y * needleWidth / 2,
+        base.z - right.z * needleWidth - up.z * needleWidth / 2
+        });
+
+    vertices.push_back({
+        base.x + right.x * needleWidth - up.x * needleWidth / 2,
+        base.y + right.y * needleWidth - up.y * needleWidth / 2,
+        base.z + right.z * needleWidth - up.z * needleWidth / 2
+        });
+
+    // Punta (un solo vértice)
+    vertices.push_back(tip);
+
+    // Crear caras triangulares (4 lados de la aguja)
+    faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 4 });
+    faces.push_back({ baseIndex + 1, baseIndex + 2, baseIndex + 4 });
+    faces.push_back({ baseIndex + 2, baseIndex + 3, baseIndex + 4 });
+    faces.push_back({ baseIndex + 3, baseIndex, baseIndex + 4 });
+
+    // Base de la aguja
+    faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 });
+    faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 });
+}
+
+void TreeToObjConverter::addBroadLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
+    // Calcular vectores de orientación
+    Point3D right, up, forward;
+    calculateLeafOrientation(position, right, up, forward);
+
+    // Añadir variación aleatoria al tamaño
+    float actualSize = size * randomFloat(0.8f, 1.2f);
+
+    // Para hojas anchas, generamos una forma ovalada más compleja
+    float leafLength = actualSize * 1.8f;
+    float leafWidth = actualSize * 1.2f;
+
+    int baseIndex = vertices.size();
+
+    // Centro/base de la hoja
+    vertices.push_back(position);
+
+    // Añadir curvatura
+    float curveFactor = actualSize * 0.2f;
+
+    // Borde derecho (3 puntos para dar forma)
+    vertices.push_back({
+        position.x + right.x * leafWidth * 0.7f + forward.x * leafLength * 0.2f,
+        position.y + right.y * leafWidth * 0.7f + forward.y * leafLength * 0.2f + up.y * curveFactor,
+        position.z + right.z * leafWidth * 0.7f + forward.z * leafLength * 0.2f + up.z * curveFactor
+        });
+
+    vertices.push_back({
+        position.x + right.x * leafWidth * 0.5f + forward.x * leafLength * 0.6f,
+        position.y + right.y * leafWidth * 0.5f + forward.y * leafLength * 0.6f + up.y * curveFactor * 1.5f,
+        position.z + right.z * leafWidth * 0.5f + forward.z * leafLength * 0.6f + up.z * curveFactor * 1.5f
+        });
+
+    // Punta
+    vertices.push_back({
+        position.x + forward.x * leafLength,
+        position.y + forward.y * leafLength + up.y * curveFactor,
+        position.z + forward.z * leafLength + up.z * curveFactor
+        });
+
+    // Borde izquierdo (3 puntos para dar forma)
+    vertices.push_back({
+        position.x - right.x * leafWidth * 0.5f + forward.x * leafLength * 0.6f,
+        position.y - right.y * leafWidth * 0.5f + forward.y * leafLength * 0.6f + up.y * curveFactor * 1.5f,
+        position.z - right.z * leafWidth * 0.5f + forward.z * leafLength * 0.6f + up.z * curveFactor * 1.5f
+        });
+
+    vertices.push_back({
+        position.x - right.x * leafWidth * 0.7f + forward.x * leafLength * 0.2f,
+        position.y - right.y * leafWidth * 0.7f + forward.y * leafLength * 0.2f + up.y * curveFactor,
+        position.z - right.z * leafWidth * 0.7f + forward.z * leafLength * 0.2f + up.z * curveFactor
+        });
+
+    // Crear caras triangulares
+    // Parte frontal
+    faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 2 });
+    faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 3 });
+    faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 4 });
+    faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 5 });
+
+    // Parte trasera (invertir orden)
+    faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 });
+    faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 });
+    faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 3 });
+    faces.push_back({ baseIndex, baseIndex + 5, baseIndex + 4 });
+}
+
+void TreeToObjConverter::addPalmLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
+    // Calcular vectores de orientación
+    Point3D right, up, forward;
+    calculateLeafOrientation(position, right, up, forward);
+
+    // Para palmeras, más orientación vertical
+    forward.y += 0.7f;
+    forward = normalizeVector(forward);
+
+    // Recalcular vectores ortogonales
+    right = {
+        up.y * forward.z - up.z * forward.y,
+        up.z * forward.x - up.x * forward.z,
+        up.x * forward.y - up.y * forward.x
+    };
+    right = normalizeVector(right);
+
+    up = {
+        forward.y * right.z - forward.z * right.y,
+        forward.z * right.x - forward.x * right.z,
+        forward.x * right.y - forward.y * right.x
+    };
+    up = normalizeVector(up);
+
+    // Variación aleatoria del tamaño
+    float actualSize = size * randomFloat(0.8f, 1.2f);
+
+    // Hoja de palmera alargada
+    float leafLength = actualSize * 4.0f;
+    float maxWidth = actualSize * 0.8f;
+
+    int baseIndex = vertices.size();
+
+    // Base de la hoja
+    Point3D base = position;
+
+    // Vértice para la base del tallo
+    vertices.push_back(base);
+
+    // Número de segmentos en la hoja
+    int segments = 5;
+
+    // Crear segmentos a lo largo de la hoja
+    for (int i = 1; i <= segments; ++i) {
+        float t = static_cast<float>(i) / segments;
+
+        // El ancho aumenta y luego disminuye a lo largo de la hoja (forma ovalada)
+        float segmentWidth = maxWidth * std::sin(t * M_PI);
+
+        // Punto central del segmento
+        Point3D centerPoint = {
+            base.x + forward.x * leafLength * t,
+            base.y + forward.y * leafLength * t,
+            base.z + forward.z * leafLength * t
+        };
+
+        // Añadir curvatura (la hoja se curva hacia arriba en el medio)
+        float curvature = actualSize * 0.5f * std::sin(t * M_PI);
+
+        // Crear puntos a la izquierda y derecha del centro
+        Point3D leftPoint = {
+            centerPoint.x - right.x * segmentWidth,
+            centerPoint.y - right.y * segmentWidth + up.y * curvature,
+            centerPoint.z - right.z * segmentWidth + up.z * curvature
+        };
+
+        Point3D rightPoint = {
+            centerPoint.x + right.x * segmentWidth,
+            centerPoint.y + right.y * segmentWidth + up.y * curvature,
+            centerPoint.z + right.z * segmentWidth + up.z * curvature
+        };
+
+        // Añadir vértices
+        vertices.push_back(centerPoint);
+        vertices.push_back(leftPoint);
+        vertices.push_back(rightPoint);
+
+        // Crear caras triangulares para conectar con el segmento anterior
+        if (i > 1) {
+            // Índices de los puntos en este segmento
+            int currCenterIdx = baseIndex + 1 + (i - 1) * 3;
+            int currLeftIdx = currCenterIdx + 1;
+            int currRightIdx = currCenterIdx + 2;
+
+            // Índices del segmento anterior
+            int prevCenterIdx = baseIndex + 1 + (i - 2) * 3;
+            int prevLeftIdx = prevCenterIdx + 1;
+            int prevRightIdx = prevCenterIdx + 2;
+
+            // Caras frontales
+            faces.push_back({ prevCenterIdx, currCenterIdx, currLeftIdx });
+            faces.push_back({ prevCenterIdx, currLeftIdx, prevLeftIdx });
+
+            faces.push_back({ prevCenterIdx, prevRightIdx, currRightIdx });
+            faces.push_back({ prevCenterIdx, currRightIdx, currCenterIdx });
+
+            // Caras traseras
+            faces.push_back({ prevCenterIdx, currLeftIdx, currCenterIdx });
+            faces.push_back({ prevCenterIdx, prevLeftIdx, currLeftIdx });
+
+            faces.push_back({ prevCenterIdx, currRightIdx, prevRightIdx });
+            faces.push_back({ prevCenterIdx, currCenterIdx, currRightIdx });
+        }
+
+        // Para el primer segmento, conectar con la base
+        if (i == 1) {
+            faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 2 });
+            faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 1 });
+
+            // Caras traseras del primer segmento
+            faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 });
+            faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 3 });
+        }
+    }
+}
+
+//void TreeToObjConverter::addLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
+//    // Índice base para esta hoja
+//    int baseIndex = vertices.size();
+//
+//
+//    float randomFactor = 1.0f - 0.75f + ((float)rand() / RAND_MAX) * 0.75f * 2.0f;
+//    float scaledSize = (size * 5.0f) * randomFactor;
+//
+//
+//
+//    float yaw = ((float)rand() / RAND_MAX) * 2.0f * M_PI;   // 0-360 grados
+//    float pitch = ((float)rand() / RAND_MAX) * M_PI / 2.0f; // 0-90 grados
+//    float roll = ((float)rand() / RAND_MAX) * M_PI / 4.0f;  // 0-45 grados
+//
+//    // Calcular vectores de orientación usando los ángulos aleatorios
+//    float cy = cos(yaw), sy = sin(yaw);
+//    float cp = cos(pitch), sp = sin(pitch);
+//    float cr = cos(roll), sr = sin(roll);
+//
+//    // Matriz de rotación 3D completa (yaw, pitch, roll)
+//    Point3D right, up, forward;
+//
+//    // Vector derecha (right)
+//    right.x = cy * cr + sy * sp * sr;
+//    right.y = sr * cp;
+//    right.z = -sy * cr + cy * sp * sr;
+//
+//    // Vector arriba (up)
+//    up.x = -cy * sr + sy * sp * cr;
+//    up.y = cr * cp;
+//    up.z = sy * sr + cy * sp * cr;
+//
+//    // Vector adelante (forward)
+//    forward.x = sy * cp;
+//    forward.y = -sp;
+//    forward.z = cy * cp;
+//
+//    // Normalizar vectores
+//    right = normalizeVector(right);
+//    up = normalizeVector(up);
+//    forward = normalizeVector(forward);
+//
+//    // Ahora creamos una forma de hoja más compleja con vértices alrededor de la posición
+//    float leafLength = scaledSize * 1.5f;
+//    float leafWidth = scaledSize * 0.8f;
+//
+//    // Vértices de la hoja (forma de diamante alargado)
+//    vertices.push_back(position); // Centro
+//
+//    vertices.push_back({
+//        position.x + right.x * leafWidth * 0.5f,
+//        position.y + right.y * leafWidth * 0.5f,
+//        position.z + right.z * leafWidth * 0.5f
+//        }); // Derecha
+//
+//    vertices.push_back({
+//        position.x + forward.x * leafLength,
+//        position.y + forward.y * leafLength,
+//        position.z + forward.z * leafLength
+//        }); // Punta
+//
+//    vertices.push_back({
+//        position.x - right.x * leafWidth * 0.5f,
+//        position.y - right.y * leafWidth * 0.5f,
+//        position.z - right.z * leafWidth * 0.5f
+//        }); // Izquierda
+//
+//    vertices.push_back({
+//        position.x - forward.x * leafLength * 0.3f,
+//        position.y - forward.y * leafLength * 0.3f,
+//        position.z - forward.z * leafLength * 0.3f
+//        }); // Base
+//
+//    // Añadir las caras (ahora triangulares para mejor renderizado)
+//    faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 2 }); // Cara superior derecha
+//    faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 3 }); // Cara superior izquierda
+//    faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 4 }); // Cara inferior izquierda
+//    faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 1 }); // Cara inferior derecha
+//
+//    // Añadir caras para el reverso de la hoja
+//    faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 }); // Cara superior derecha reversa
+//    faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 }); // Cara superior izquierda reversa
+//    faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 3 }); // Cara inferior izquierda reversa
+//    faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 4 }); // Cara inferior derecha reversa
+//}
 
 void TreeToObjConverter::calculatePerpendicularVectors(const Point3D& direction, Point3D& perpendicular1, Point3D& perpendicular2) {
     // Encontrar un vector perpendicular

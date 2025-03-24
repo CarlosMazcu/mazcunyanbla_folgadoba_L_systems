@@ -26,7 +26,7 @@ std::string exportStatusMessage = "Preparando exportación...";
 char exportingFilePath[512] = { 0 };
 
 bool exportObjThreaded(const char* fullPath, int resolution, bool includeLeaves,
-	float leafSize, float randomnessFactor, const std::string& lSystemString,
+	float leafSize, float randomnessFactor, float branchRadiusMultiplier, int leaftype, const std::string& lSystemString,
 	float initialAngle, float initialLength, float initialWidth, std::atomic<float>& progress) {
 	// Actualizar estado inicial
 	progress = 0.05f;
@@ -35,8 +35,28 @@ bool exportObjThreaded(const char* fullPath, int resolution, bool includeLeaves,
 	// Configurar el conversor 3D
 	TreeToObjConverter converter(fullPath, resolution);
 	converter.setGenerateLeaves(includeLeaves);
-	converter.setLeafSize(leafSize);
+	converter.setLeafSize(leafSize * 5.0f);
 	converter.setRandomnessFactor(randomnessFactor);
+	converter.setBranchRadiusMultiplier(branchRadiusMultiplier);
+	LeafType selectedLeafType;
+	switch (leaftype) {
+	case 1:
+		selectedLeafType = LeafType::NEEDLE;
+		break;
+	case 2:
+		selectedLeafType = LeafType::BROAD;
+		break;
+	case 3:
+		selectedLeafType = LeafType::PALM;
+		break;
+	case 0:
+		selectedLeafType = LeafType::SIMPLE;
+		break;
+	default:
+		selectedLeafType = LeafType::SIMPLE;
+		break;
+	}
+	converter.setLeafType(selectedLeafType);
 
 	// Fase 1: Convertir el L-System a OBJ
 	if (!converter.convertLSystemToObj(lSystemString, initialAngle, initialLength, initialWidth)) {
@@ -59,7 +79,7 @@ bool exportObjThreaded(const char* fullPath, int resolution, bool includeLeaves,
 
 	// Completar
 	exportProgress = 1.0f;
-	exportStatusMessage = "¡Exportación completada con éxito!";
+	exportStatusMessage = "Exportación completada con exito!";
 
 	// Pequeña pausa para que se vea el mensaje de éxito
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -131,6 +151,7 @@ void imguiWindow(LSystem& ls, bool& readyToGenerate, bool& ruleApplied, bool& ex
 	static bool axiomSet = false;
 	static int selectedMode = -1;
 	static bool setobj = false;
+	static int currentLeafType = 0;
 	static std::vector<char> availableAxioms = { 'F', 'X', 'Y', 'A', 'B' };
 	static std::vector<std::string> guidedActions = {
 	   "Expandir ramas",
@@ -163,7 +184,6 @@ void imguiWindow(LSystem& ls, bool& readyToGenerate, bool& ruleApplied, bool& ex
 			}
 		}
 		else {
-			// Mostrar pantalla de carga
 			showLoadingScreen();
 		}
 	}
@@ -280,9 +300,38 @@ void imguiWindow(LSystem& ls, bool& readyToGenerate, bool& ruleApplied, bool& ex
 			static bool includeLeaves = true;
 			ImGui::Checkbox("Include Leaves", &includeLeaves);
 
-			static float leafSize = 0.5f;
+			static float leafSize = 3.0f;
 			if (includeLeaves) {
-				ImGui::SliderFloat("Leaf Size", &leafSize, 0.1f, 2.0f);
+				ImGui::SliderFloat("Leaf Size", &leafSize, 0.1f, 10.0f);
+				static const std::vector<std::string> leafTypeNames = TreeToObjConverter::getLeafTypeNames();
+
+				if (ImGui::BeginCombo("Leaf Type", leafTypeNames[currentLeafType].c_str())) {
+					for (int i = 0; i < leafTypeNames.size(); i++) {
+						bool isSelected = (currentLeafType == i);
+						if (ImGui::Selectable(leafTypeNames[i].c_str(), isSelected)) {
+							currentLeafType = i;
+						}
+						if (isSelected) {
+							ImGui::SetItemDefaultFocus();
+						}
+					}
+					ImGui::EndCombo();
+				}
+
+				switch (currentLeafType) {
+				case 0:
+					ImGui::TextWrapped("Simple diamond-shaped leaf (original)");
+					break;
+				case 1: 
+					ImGui::TextWrapped("Long thin needle-like leaf, good for conifers and pines");
+					break;
+				case 2: 
+					ImGui::TextWrapped("Wide oval leaf with curved edges, good for deciduous trees");
+					break;
+				case 3:
+					ImGui::TextWrapped("Long segmented leaf with a central stem, ideal for palm trees");
+					break;
+				}
 			}
 
 			static float randomness3D = 1.0f;
@@ -290,7 +339,11 @@ void imguiWindow(LSystem& ls, bool& readyToGenerate, bool& ruleApplied, bool& ex
 			if (ImGui::IsItemHovered()) {
 				ImGui::SetTooltip("0 = Flat tree, 1 = Natural 3D, 2-3 = Very volumetric 3D branching");
 			}
-
+			static float branchRadiusMultiplier = 1.0f;
+			ImGui::SliderFloat("Branch Radius", &branchRadiusMultiplier, 0.2f, 3.0f);
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Multiplier for branch thickness: 1.0 = default, <1.0 = thinner, >1.0 = thicker");
+			}
 			ImGui::Separator();
 
 
@@ -405,7 +458,7 @@ void imguiWindow(LSystem& ls, bool& readyToGenerate, bool& ruleApplied, bool& ex
 				// Iniciar el proceso de exportación asíncrono
 				exportFuture = std::async(std::launch::async,
 					exportObjThreaded, fullPath, resolution, includeLeaves,
-					leafSize, randomness3D, ls.getCurrent(),
+					leafSize, randomness3D, branchRadiusMultiplier, currentLeafType, ls.getCurrent(),
 					INITIAL_ANGLE, INITIAL_LENGTH, INITIAL_WIDTH, std::ref(exportProgress));
 			}
 
