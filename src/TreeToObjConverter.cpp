@@ -6,9 +6,9 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
     leafPoints.clear();
 
     std::stack<Point3D> positionStack;
-    std::stack<Point3D> headingStack;    // Dirección hacia delante (heading)
-    std::stack<Point3D> leftStack;       // Vector izquierda
-    std::stack<Point3D> upStack;         // Vector arriba
+    std::stack<Point3D> headingStack;    
+    std::stack<Point3D> leftStack;       
+    std::stack<Point3D> upStack;         
     std::stack<float> lineWidthStack;
     std::stack<float> lengthStack;
     std::stack<float> angleIncrementStack;
@@ -16,35 +16,30 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
     const float PI = 3.1416f;
     const float degToRad = PI / 180.0f;
 
-    // Inicializamos con una posición en 3D
     Point3D currentPosition(0.0f, 0.0f, 0.0f);
 
-    // Vectores de orientación iniciales (sistema de coordenadas de tortuga 3D)
-    Point3D heading(0.0f, 1.0f, 0.0f);  // Dirección hacia delante (eje Y)
-    Point3D left(-1.0f, 0.0f, 0.0f);    // Vector izquierda (eje -X)
-    Point3D up(0.0f, 0.0f, 1.0f);       // Vector arriba (eje Z)
+   
+    Point3D heading(0.0f, 1.0f, 0.0f);
+    Point3D left(-1.0f, 0.0f, 0.0f);  
+    Point3D up(0.0f, 0.0f, 1.0f);     
 
     float lineWidth = initialWidth * branchMultiplier;
     float currentLength = initialLength;
     float angleIncrement = initialAngle;
     bool invertTurns = false;
 
-    // Añadir variación aleatoria a las rotaciones para más naturalidad
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
 
-    // Recorrer la cadena del L-system
     for (char c : lSystemString) {
 
         switch (c) {
-        case 'F': { // Dibujar una línea hacia adelante
+        case 'F': { 
 
             if (randomnessFactor > 0.0f && ((float)rand() / RAND_MAX) < 0.3f * randomnessFactor) {
-                // Pequeña rotación aleatoria en pitch y yaw
                 float smallRandomPitch = (((float)rand() / RAND_MAX) * 10.0f - 5.0f) * randomnessFactor * degToRad;
                 float smallRandomYaw = (((float)rand() / RAND_MAX) * 10.0f - 5.0f) * randomnessFactor * degToRad;
 
-                // Aplicar pitch (rotación alrededor de left)
                 float cosPitch = cos(smallRandomPitch);
                 float sinPitch = sin(smallRandomPitch);
 
@@ -63,7 +58,6 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 heading = normalizeVector(tempHeading);
                 up = normalizeVector(tempUp);
 
-                // Aplicar yaw (rotación alrededor de up)
                 float cosYaw = cos(smallRandomYaw);
                 float sinYaw = sin(smallRandomYaw);
 
@@ -82,7 +76,6 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 heading = normalizeVector(tempHeading);
                 left = normalizeVector(tempLeft);
 
-                // Asegurar ortogonalidad
                 up = normalizeVector(Point3D(
                     left.y * heading.z - left.z * heading.y,
                     left.z * heading.x - left.x * heading.z,
@@ -90,21 +83,18 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 ));
             }
 
-            // Calculamos el nuevo punto usando la dirección actual
             Point3D newPosition(
                 currentPosition.x + heading.x * currentLength,
                 currentPosition.y + heading.y * currentLength,
                 currentPosition.z + heading.z * currentLength
             );
 
-            // Añadimos el segmento a nuestra lista
             segments.push_back(Segment3D(currentPosition, newPosition, lineWidth));
 
-            // Actualizamos la posición actual
             currentPosition = newPosition;
             break;
         }
-        case 'f': { // Avanzar sin dibujar
+        case 'f': { 
             Point3D newPosition(
                 currentPosition.x + heading.x * currentLength,
                 currentPosition.y + heading.y * currentLength,
@@ -113,18 +103,13 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             currentPosition = newPosition;
             break;
         }
-        case '+': { // Girar a la izquierda (rotación alrededor del eje up)
+        case '+': { 
             float angle = (invertTurns ? -angleIncrement : angleIncrement) * degToRad;
 
-            // Añadir algo de variación aleatoria al ángulo (±10%)
             float randomFactor = 1.0f + (((float)rand() / RAND_MAX) * 0.2f - 0.1f);
             angle *= randomFactor;
 
-            // MODIFICACIÓN CLAVE: Introducir componente 3D al ángulo
-            // En lugar de rotar solo en el plano horizontal, ahora distribuimos
-            // la rotación en una esfera (componentes en los tres ejes)
 
-            // 1. Rotación alrededor del eje up (yaw) - efecto tradicional 2D
             float yawAngle = angle * (1.0f - 0.5f * randomnessFactor);
             float cosYaw = cos(yawAngle);
             float sinYaw = sin(yawAngle);
@@ -141,10 +126,8 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 left.z* cosYaw - heading.z * sinYaw
             );
 
-            // 2. Añadir una componente de rotación alrededor del eje left (pitch)
-            // Solo si el factor de aleatoriedad es > 0
+          
             if (randomnessFactor > 0.0f) {
-                // El factor de pitch es proporcional al factor de aleatoriedad
                 float pitchIntensity = 0.7f * randomnessFactor;
                 float pitchAngle = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * angle * pitchIntensity;
 
@@ -167,7 +150,6 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 up = tempUp;
             }
 
-            // 3. También podemos añadir una componente de roll si queremos
             if (randomnessFactor > 0.0f && ((float)rand() / RAND_MAX) < 0.3f * randomnessFactor) {
                 float rollIntensity = 0.4f * randomnessFactor;
                 float rollAngle = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * angle * rollIntensity;
@@ -191,12 +173,10 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 up = tempUp;
             }
 
-            // Normalizar los vectores y asegurar que forman un sistema ortogonal
             heading = normalizeVector(newHeading);
             left = normalizeVector(newLeft);
             up = normalizeVector(up);
 
-            // Re-ortogonalizar para evitar acumulación de errores numéricos
             up = normalizeVector(Point3D(
                 left.y * heading.z - left.z * heading.y,
                 left.z * heading.x - left.x * heading.z,
@@ -210,13 +190,11 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
 
             break;
         }
-        case '-': { // Girar a la derecha (rotación opuesta a +)
-            // Lógica similar a '+' pero con ángulo invertido
+        case '-': {
             float angle = (invertTurns ? angleIncrement : -angleIncrement) * degToRad;
             float randomFactor = 1.0f + (((float)rand() / RAND_MAX) * 0.2f - 0.1f);
             angle *= randomFactor;
 
-            // Componente yaw (plano horizontal)
             float yawAngle = angle * (1.0f - 0.5f * randomnessFactor);
             float cosYaw = cos(yawAngle);
             float sinYaw = sin(yawAngle);
@@ -233,7 +211,6 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 left.z * cosYaw - heading.z * sinYaw
             );
 
-            // Componente pitch (inclinación arriba/abajo)
             if (randomnessFactor > 0.0f) {
                 float pitchIntensity = 0.7f * randomnessFactor;
                 float pitchAngle = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * -angle * pitchIntensity;
@@ -257,7 +234,6 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 up = tempUp;
             }
 
-            // Componente roll (rotación sobre el eje)
             if (randomnessFactor > 0.0f && ((float)rand() / RAND_MAX) < 0.3f * randomnessFactor) {
                 float rollIntensity = 0.4f * randomnessFactor;
                 float rollAngle = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * -angle * rollIntensity;
@@ -281,12 +257,10 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 up = tempUp;
             }
 
-            // Normalizar y corregir ortogonalidad
             heading = normalizeVector(newHeading);
             left = normalizeVector(newLeft);
             up = normalizeVector(up);
 
-            // Re-ortogonalizar
             up = normalizeVector(Point3D(
                 left.y * heading.z - left.z * heading.y,
                 left.z * heading.x - left.x * heading.z,
@@ -300,8 +274,8 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
 
             break;
         }
-        case '^': { // Inclinar hacia arriba (pitch up - rotación alrededor del eje left)
-            float angle = angleIncrement * 0.8f * degToRad; // Usar un ángulo más pequeño para pitch
+        case '^': { 
+            float angle = angleIncrement * 0.8f * degToRad;
             // Añadir variación aleatoria
             float randomFactor = 1.0f + (((float)rand() / RAND_MAX) * 0.2f - 0.1f);
             angle *= randomFactor;
@@ -325,7 +299,7 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             up = normalizeVector(newUp);
             break;
         }
-        case 'v': { // Inclinar hacia abajo (pitch down - rotación opuesta a ^)
+        case 'v': { 
             float angle = -angleIncrement * 0.8f * degToRad;
             float randomFactor = 1.0f + (((float)rand() / RAND_MAX) * 0.2f - 0.1f);
             angle *= randomFactor;
@@ -349,7 +323,7 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             up = normalizeVector(newUp);
             break;
         }
-        case '\\': { // Roll a la izquierda (rotación alrededor del eje heading)
+        case '\\': { 
             float angle = angleIncrement * 0.7f * degToRad;
             float randomFactor = 1.0f + (((float)rand() / RAND_MAX) * 0.2f - 0.1f);
             angle *= randomFactor;
@@ -373,7 +347,7 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             up = normalizeVector(newUp);
             break;
         }
-        case '/': { // Roll a la derecha (rotación opuesta a \)
+        case '/': {
             float angle = -angleIncrement * 0.7f * degToRad;
             float randomFactor = 1.0f + (((float)rand() / RAND_MAX) * 0.2f - 0.1f);
             angle *= randomFactor;
@@ -397,7 +371,7 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             up = normalizeVector(newUp);
             break;
         }
-        case '|': { // Girar 180 grados (Simplemente invertir heading y left)
+        case '|': { 
             heading.x = -heading.x;
             heading.y = -heading.y;
             heading.z = -heading.z;
@@ -407,7 +381,7 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             left.z = -left.z;
             break;
         }
-        case '[': { // Guardar el estado actual
+        case '[': { 
             positionStack.push(currentPosition);
             headingStack.push(heading);
             leftStack.push(left);
@@ -416,17 +390,13 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             lengthStack.push(currentLength);
             angleIncrementStack.push(angleIncrement);
 
-            // Posibilidad de inclinar la rama en dirección Z
             if (randomnessFactor > 0.0f && ((float)rand() / RAND_MAX) < 0.2f * randomnessFactor) {
-                // Rotación moderada hacia el eje Z (20-40 grados)
                 float zAngle = (20.0f + ((float)rand() / RAND_MAX) * 20.0f) * degToRad;
                 bool positiveZ = ((float)rand() / RAND_MAX > 0.5f);
 
-                // Aplicar rotación para inclinar hacia el eje Z
                 float cosZ = cos(zAngle);
                 float sinZ = sin(zAngle * (positiveZ ? 1.0f : -1.0f));
 
-                // Rotar alrededor de left (que apunta hacia el eje X negativo)
                 Point3D newHeading(
                     heading.x * cosZ - up.x * sinZ,
                     heading.y * cosZ - up.y * sinZ,
@@ -442,7 +412,6 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 heading = normalizeVector(newHeading);
                 up = normalizeVector(newUp);
 
-                // Recalcular left para mantener sistema ortogonal
                 left = normalizeVector(Point3D(
                     up.y * heading.z - up.z * heading.y,
                     up.z * heading.x - up.x * heading.z,
@@ -451,7 +420,7 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
             }
             break;
         }
-        case ']': // Restaurar el estado anterior
+        case ']': 
             if (!positionStack.empty()) {
                 currentPosition = positionStack.top();
                 positionStack.pop();
@@ -469,22 +438,22 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
                 angleIncrementStack.pop();
             }
             break;
-        case '#': // Incrementar el ancho de línea
+        case '#':
             lineWidth += 0.5f;
             break;
-        case '!': // Disminuir el ancho de línea
+        case '!': 
             lineWidth -= 0.5f;
             if (lineWidth < 0.1f) lineWidth = 0.1f;
             break;
-        case '@': // Marcar una hoja
+        case '@': 
             if (generateLeaves) {
                 leafPoints.push_back(currentPosition);
             }
             break;
-        case '>': // Aumentar longitud
+        case '>':
             currentLength *= 1.2f;
             break;
-        case '<': // Disminuir longitud
+        case '<':
             currentLength /= 1.2f;
             if (currentLength < 1.0f) currentLength = 1.0f;
             break;
@@ -718,7 +687,6 @@ void TreeToObjConverter::calculateLeafOrientation(const Point3D& position, Point
     forward = normalizeVector(tempForward);
     up = normalizeVector(tempUp);
 
-    // Asegurar ortogonalidad recalculando right
     right = {
         up.y * forward.z - up.z * forward.y,
         up.z * forward.x - up.x * forward.z,
@@ -737,7 +705,6 @@ void TreeToObjConverter::addSimpleLeaf(const Point3D& position, float size, std:
 
     int baseIndex = vertices.size();
 
-    // Vértices de la hoja simple (forma de diamante alargado)
     vertices.push_back(position); // Centro
 
     // Vértice derecho
@@ -754,27 +721,25 @@ void TreeToObjConverter::addSimpleLeaf(const Point3D& position, float size, std:
         position.z + forward.z * actualSize * 1.5f
         });
 
-    // Vértice izquierdo
     vertices.push_back({
         position.x - right.x * actualSize * 0.5f,
         position.y - right.y * actualSize * 0.5f,
         position.z - right.z * actualSize * 0.5f
         });
 
-    // Vértice base
     vertices.push_back({
         position.x - forward.x * actualSize * 0.3f,
         position.y - forward.y * actualSize * 0.3f,
         position.z - forward.z * actualSize * 0.3f
         });
 
-    // Caras frontales
+    // delante
     faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 2 }); // Cara superior derecha
     faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 3 }); // Cara superior izquierda
     faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 4 }); // Cara inferior izquierda
     faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 1 }); // Cara inferior derecha
 
-    // Caras traseras (invertir orden para que las normales apunten hacia afuera)
+    // detrás
     faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 }); // Inversa superior derecha
     faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 }); // Inversa superior izquierda
     faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 3 }); // Inversa inferior izquierda
@@ -782,15 +747,12 @@ void TreeToObjConverter::addSimpleLeaf(const Point3D& position, float size, std:
 }
 
 void TreeToObjConverter::addNeedleLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
-    // Calcular vectores de orientación
     Point3D right, up, forward;
     calculateLeafOrientation(position, right, up, forward);
 
-    // Para coníferas, la orientación tiende más hacia arriba
     forward.y += 0.5f;
     forward = normalizeVector(forward);
 
-    // Recalcular vectores ortogonales
     right = {
         up.y * forward.z - up.z * forward.y,
         up.z * forward.x - up.x * forward.z,
@@ -805,26 +767,21 @@ void TreeToObjConverter::addNeedleLeaf(const Point3D& position, float size, std:
     };
     up = normalizeVector(up);
 
-    // Añadir variación aleatoria al tamaño
     float actualSize = size * randomFloat(0.8f, 1.2f);
 
-    // Longitud y grosor de la aguja
     float needleLength = actualSize * 3.0f;
     float needleWidth = actualSize * 0.1f;
 
     int baseIndex = vertices.size();
 
-    // Base de la aguja
     Point3D base = position;
 
-    // Punta de la aguja
     Point3D tip = {
         base.x + forward.x * needleLength,
         base.y + forward.y * needleLength,
         base.z + forward.z * needleLength
     };
 
-    // Vértices en la base (forma de prisma delgado)
     vertices.push_back({
         base.x + right.x * needleWidth + up.x * needleWidth / 2,
         base.y + right.y * needleWidth + up.y * needleWidth / 2,
@@ -849,38 +806,30 @@ void TreeToObjConverter::addNeedleLeaf(const Point3D& position, float size, std:
         base.z + right.z * needleWidth - up.z * needleWidth / 2
         });
 
-    // Punta (un solo vértice)
     vertices.push_back(tip);
 
-    // Crear caras triangulares (4 lados de la aguja)
     faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 4 });
     faces.push_back({ baseIndex + 1, baseIndex + 2, baseIndex + 4 });
     faces.push_back({ baseIndex + 2, baseIndex + 3, baseIndex + 4 });
     faces.push_back({ baseIndex + 3, baseIndex, baseIndex + 4 });
 
-    // Base de la aguja
     faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 });
     faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 });
 }
 
 void TreeToObjConverter::addBroadLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
-    // Calcular vectores de orientación
     Point3D right, up, forward;
     calculateLeafOrientation(position, right, up, forward);
 
-    // Añadir variación aleatoria al tamaño
     float actualSize = size * randomFloat(0.8f, 1.2f);
 
-    // Para hojas anchas, generamos una forma ovalada más compleja
     float leafLength = actualSize * 1.8f;
     float leafWidth = actualSize * 1.2f;
 
     int baseIndex = vertices.size();
 
-    // Centro/base de la hoja
     vertices.push_back(position);
 
-    // Añadir curvatura
     float curveFactor = actualSize * 0.2f;
 
     // Borde derecho (3 puntos para dar forma)
@@ -916,14 +865,12 @@ void TreeToObjConverter::addBroadLeaf(const Point3D& position, float size, std::
         position.z - right.z * leafWidth * 0.7f + forward.z * leafLength * 0.2f + up.z * curveFactor
         });
 
-    // Crear caras triangulares
     // Parte frontal
     faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 2 });
     faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 3 });
     faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 4 });
     faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 5 });
 
-    // Parte trasera (invertir orden)
     faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 });
     faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 });
     faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 3 });
@@ -931,15 +878,12 @@ void TreeToObjConverter::addBroadLeaf(const Point3D& position, float size, std::
 }
 
 void TreeToObjConverter::addPalmLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
-    // Calcular vectores de orientación
     Point3D right, up, forward;
     calculateLeafOrientation(position, right, up, forward);
 
-    // Para palmeras, más orientación vertical
     forward.y += 0.7f;
     forward = normalizeVector(forward);
 
-    // Recalcular vectores ortogonales
     right = {
         up.y * forward.z - up.z * forward.y,
         up.z * forward.x - up.x * forward.z,
@@ -954,42 +898,32 @@ void TreeToObjConverter::addPalmLeaf(const Point3D& position, float size, std::v
     };
     up = normalizeVector(up);
 
-    // Variación aleatoria del tamaño
     float actualSize = size * randomFloat(0.8f, 1.2f);
 
-    // Hoja de palmera alargada
     float leafLength = actualSize * 4.0f;
     float maxWidth = actualSize * 0.8f;
 
     int baseIndex = vertices.size();
 
-    // Base de la hoja
     Point3D base = position;
 
-    // Vértice para la base del tallo
     vertices.push_back(base);
 
-    // Número de segmentos en la hoja
     int segments = 5;
 
-    // Crear segmentos a lo largo de la hoja
     for (int i = 1; i <= segments; ++i) {
         float t = static_cast<float>(i) / segments;
 
-        // El ancho aumenta y luego disminuye a lo largo de la hoja (forma ovalada)
         float segmentWidth = maxWidth * std::sin(t * M_PI);
 
-        // Punto central del segmento
         Point3D centerPoint = {
             base.x + forward.x * leafLength * t,
             base.y + forward.y * leafLength * t,
             base.z + forward.z * leafLength * t
         };
 
-        // Añadir curvatura (la hoja se curva hacia arriba en el medio)
         float curvature = actualSize * 0.5f * std::sin(t * M_PI);
 
-        // Crear puntos a la izquierda y derecha del centro
         Point3D leftPoint = {
             centerPoint.x - right.x * segmentWidth,
             centerPoint.y - right.y * segmentWidth + up.y * curvature,
@@ -1002,31 +936,25 @@ void TreeToObjConverter::addPalmLeaf(const Point3D& position, float size, std::v
             centerPoint.z + right.z * segmentWidth + up.z * curvature
         };
 
-        // Añadir vértices
         vertices.push_back(centerPoint);
         vertices.push_back(leftPoint);
         vertices.push_back(rightPoint);
 
-        // Crear caras triangulares para conectar con el segmento anterior
         if (i > 1) {
-            // Índices de los puntos en este segmento
             int currCenterIdx = baseIndex + 1 + (i - 1) * 3;
             int currLeftIdx = currCenterIdx + 1;
             int currRightIdx = currCenterIdx + 2;
 
-            // Índices del segmento anterior
             int prevCenterIdx = baseIndex + 1 + (i - 2) * 3;
             int prevLeftIdx = prevCenterIdx + 1;
             int prevRightIdx = prevCenterIdx + 2;
 
-            // Caras frontales
             faces.push_back({ prevCenterIdx, currCenterIdx, currLeftIdx });
             faces.push_back({ prevCenterIdx, currLeftIdx, prevLeftIdx });
 
             faces.push_back({ prevCenterIdx, prevRightIdx, currRightIdx });
             faces.push_back({ prevCenterIdx, currRightIdx, currCenterIdx });
 
-            // Caras traseras
             faces.push_back({ prevCenterIdx, currLeftIdx, currCenterIdx });
             faces.push_back({ prevCenterIdx, prevLeftIdx, currLeftIdx });
 
@@ -1034,12 +962,10 @@ void TreeToObjConverter::addPalmLeaf(const Point3D& position, float size, std::v
             faces.push_back({ prevCenterIdx, currCenterIdx, currRightIdx });
         }
 
-        // Para el primer segmento, conectar con la base
         if (i == 1) {
             faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 2 });
             faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 1 });
 
-            // Caras traseras del primer segmento
             faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 });
             faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 3 });
         }

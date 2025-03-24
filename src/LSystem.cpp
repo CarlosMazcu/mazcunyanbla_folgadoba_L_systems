@@ -45,18 +45,18 @@ std::string LSystem::getCurrent() const {
 }
 
 void LSystem::generateGuidedRules(int action) {
-    // Si aún no existe una regla para 'F', inicializarla con un simple avance
+
     if (rules.find('F') == rules.end()) {
         rules['F'] = "F";
     }
 
-    std::string& currentRule = rules['F']; // Referencia a la regla existente
+    std::string& currentRule = rules['F']; 
 
     switch (action) {
-    case 0: // Expandir ramas
+    case 0: 
         currentRule += "[+F][-F]";
         break;
-    case 1: // Añadir hojas
+    case 1: 
         currentRule += "[@]";
         break;
     case 2: // Árbol más denso
@@ -68,12 +68,11 @@ void LSystem::generateGuidedRules(int action) {
     case 4: // Ramas más anchas
         currentRule += "[+F][-F]F";
         break;
-    case 5: // Hacerlo más caótico
+    case 5: 
         currentRule += "F[-F][+F]F[-F]F";
         break;
     }
 
-    // Reiniciar la cadena actual para reflejar los cambios acumulativos
     current = originalAxiom;
 }
 
