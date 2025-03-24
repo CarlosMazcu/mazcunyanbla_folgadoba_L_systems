@@ -49,6 +49,9 @@ bool exportObjThreaded(const char* fullPath, int resolution, bool includeLeaves,
 	case 3:
 		selectedLeafType = LeafType::PALM;
 		break;
+	case 4:
+		selectedLeafType = LeafType::COMPOUND;
+		break;
 	case 0:
 		selectedLeafType = LeafType::SIMPLE;
 		break;
@@ -330,6 +333,9 @@ void imguiWindow(LSystem& ls, bool& readyToGenerate, bool& ruleApplied, bool& ex
 					break;
 				case 3:
 					ImGui::TextWrapped("Long segmented leaf with a central stem, ideal for palm trees");
+					break;
+				case 4:
+					ImGui::TextWrapped("Compound leaf with multiple leaflets along a central stem, like ferns or ash trees");
 					break;
 				}
 			}

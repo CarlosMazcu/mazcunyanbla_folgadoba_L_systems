@@ -651,6 +651,9 @@ void TreeToObjConverter::addLeaf(const Point3D& position, float size, std::vecto
     case LeafType::PALM:
         addPalmLeaf(position, size, vertices, faces);
         break;
+    case LeafType::COMPOUND:
+        addCompoundLeaf(position, size, vertices, faces);
+        break;
     case LeafType::SIMPLE:
     default:
         addSimpleLeaf(position, size, vertices, faces);
@@ -970,6 +973,184 @@ void TreeToObjConverter::addPalmLeaf(const Point3D& position, float size, std::v
             faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 3 });
         }
     }
+}
+
+void TreeToObjConverter::addCompoundLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces)
+{
+
+	Point3D right, up, forward;
+	calculateLeafOrientation(position, right, up, forward);
+
+	// Add slight upward tilt
+	forward.y += 0.3f;
+	forward = normalizeVector(forward);
+
+	// Recalculate right and up vectors for orthogonality
+	right = {
+		up.y * forward.z - up.z * forward.y,
+		up.z * forward.x - up.x * forward.z,
+		up.x * forward.y - up.y * forward.x
+	};
+	right = normalizeVector(right);
+
+	up = {
+		forward.y * right.z - forward.z * right.y,
+		forward.z * right.x - forward.x * right.z,
+		forward.x * right.y - forward.y * right.x
+	};
+	up = normalizeVector(up);
+
+	// Add random variation to size
+	float actualSize = size * randomFloat(0.8f, 1.2f);
+
+	// Parameters for the compound leaf
+	float stemLength = actualSize * 3.5f;
+	float stemWidth = actualSize * 0.05f;
+	int numPairs = 4 + static_cast<int>(randomFloat(0, 2)); // 4-5 pairs of leaflets
+	float leafletLength = actualSize * 0.7f;
+	float leafletWidth = actualSize * 0.15f;
+
+	int baseIndex = vertices.size();
+	Point3D stemBase = position;
+
+	// Create stem vertices (central vein)
+	std::vector<Point3D> stemPoints;
+	for (int i = 0; i <= numPairs; i++) {
+		float t = static_cast<float>(i) / numPairs;
+		Point3D stemPoint = {
+			stemBase.x + forward.x * stemLength * t,
+			stemBase.y + forward.y * stemLength * t,
+			stemBase.z + forward.z * stemLength * t
+		};
+		stemPoints.push_back(stemPoint);
+	}
+
+	// Store first vertex index for stem base
+	vertices.push_back(stemBase);
+	int stemBaseIndex = baseIndex;
+
+	// For each pair of leaflets
+	for (int i = 0; i < numPairs; i++) {
+		float t = static_cast<float>(i) / numPairs;
+
+		// Leaflet size gets smaller as we approach the tip
+		float scaleFactor = 1.0f - t * 0.6f;
+		float currLeafletLength = leafletLength * scaleFactor;
+		float currLeafletWidth = leafletWidth * scaleFactor;
+
+		// Current point on the stem
+		Point3D stemPoint = stemPoints[i];
+
+		// Direction vectors for each pair are perpendicular to the stem
+		// Add slight angle variation
+		float angleVar = randomFloat(-0.1f, 0.1f);
+		Point3D rightAngled = {
+			right.x * std::cos(angleVar) - forward.x * std::sin(angleVar),
+			right.y * std::cos(angleVar) - forward.y * std::sin(angleVar),
+			right.z * std::cos(angleVar) - forward.z * std::sin(angleVar)
+		};
+		rightAngled = normalizeVector(rightAngled);
+
+		// Create vertices for left leaflet
+		int leftLeafletBase = vertices.size();
+		vertices.push_back(stemPoint); // Attachment point
+
+		// Add some curve to the leaflet
+		float curveFactor = actualSize * 0.1f;
+
+		// Left leaflet tip
+		vertices.push_back({
+			stemPoint.x - rightAngled.x * currLeafletLength,
+			stemPoint.y - rightAngled.y * currLeafletLength + up.y * curveFactor,
+			stemPoint.z - rightAngled.z * currLeafletLength + up.z * curveFactor
+			});
+
+		// Points for width of left leaflet
+		vertices.push_back({
+			stemPoint.x - rightAngled.x * currLeafletLength * 0.8f - forward.x * currLeafletWidth,
+			stemPoint.y - rightAngled.y * currLeafletLength * 0.8f - forward.y * currLeafletWidth + up.y * curveFactor * 0.8f,
+			stemPoint.z - rightAngled.z * currLeafletLength * 0.8f - forward.z * currLeafletWidth + up.z * curveFactor * 0.8f
+			});
+
+		vertices.push_back({
+			stemPoint.x - rightAngled.x * currLeafletLength * 0.8f + forward.x * currLeafletWidth,
+			stemPoint.y - rightAngled.y * currLeafletLength * 0.8f + forward.y * currLeafletWidth + up.y * curveFactor * 0.8f,
+			stemPoint.z - rightAngled.z * currLeafletLength * 0.8f + forward.z * currLeafletWidth + up.z * curveFactor * 0.8f
+			});
+
+		// Create faces for left leaflet (front and back)
+		faces.push_back({ leftLeafletBase, leftLeafletBase + 2, leftLeafletBase + 1 });
+		faces.push_back({ leftLeafletBase, leftLeafletBase + 1, leftLeafletBase + 3 });
+		faces.push_back({ leftLeafletBase, leftLeafletBase + 1, leftLeafletBase + 2 });
+		faces.push_back({ leftLeafletBase, leftLeafletBase + 3, leftLeafletBase + 1 });
+
+		// Create vertices for right leaflet
+		int rightLeafletBase = vertices.size();
+		vertices.push_back(stemPoint); // Attachment point
+
+		// Right leaflet tip
+		vertices.push_back({
+			stemPoint.x + rightAngled.x * currLeafletLength,
+			stemPoint.y + rightAngled.y * currLeafletLength + up.y * curveFactor,
+			stemPoint.z + rightAngled.z * currLeafletLength + up.z * curveFactor
+			});
+
+		// Points for width of right leaflet
+		vertices.push_back({
+			stemPoint.x + rightAngled.x * currLeafletLength * 0.8f - forward.x * currLeafletWidth,
+			stemPoint.y + rightAngled.y * currLeafletLength * 0.8f - forward.y * currLeafletWidth + up.y * curveFactor * 0.8f,
+			stemPoint.z + rightAngled.z * currLeafletLength * 0.8f - forward.z * currLeafletWidth + up.z * curveFactor * 0.8f
+			});
+
+		vertices.push_back({
+			stemPoint.x + rightAngled.x * currLeafletLength * 0.8f + forward.x * currLeafletWidth,
+			stemPoint.y + rightAngled.y * currLeafletLength * 0.8f + forward.y * currLeafletWidth + up.y * curveFactor * 0.8f,
+			stemPoint.z + rightAngled.z * currLeafletLength * 0.8f + forward.z * currLeafletWidth + up.z * curveFactor * 0.8f
+			});
+
+		// Create faces for right leaflet (front and back)
+		faces.push_back({ rightLeafletBase, rightLeafletBase + 2, rightLeafletBase + 1 });
+		faces.push_back({ rightLeafletBase, rightLeafletBase + 1, rightLeafletBase + 3 });
+		faces.push_back({ rightLeafletBase, rightLeafletBase + 1, rightLeafletBase + 2 });
+		faces.push_back({ rightLeafletBase, rightLeafletBase + 3, rightLeafletBase + 1 });
+	}
+
+	// Create an elongated tip leaflet
+	Point3D tipPoint = stemPoints[numPairs];
+	int tipLeafletBase = vertices.size();
+
+	vertices.push_back(tipPoint); // Attachment point
+
+	float tipLength = leafletLength * 0.8f;
+	float tipWidth = leafletWidth * 0.5f;
+	float tipCurveFactor = actualSize * 0.1f;
+
+	// Tip leaflet end point
+	vertices.push_back({
+		tipPoint.x + forward.x * tipLength,
+		tipPoint.y + forward.y * tipLength + up.y * tipCurveFactor,
+		tipPoint.z + forward.z * tipLength + up.z * tipCurveFactor
+		});
+
+	// Points for width of tip leaflet
+	vertices.push_back({
+		tipPoint.x + forward.x * tipLength * 0.7f + right.x * tipWidth,
+		tipPoint.y + forward.y * tipLength * 0.7f + right.y * tipWidth + up.y * tipCurveFactor * 0.8f,
+		tipPoint.z + forward.z * tipLength * 0.7f + right.z * tipWidth + up.z * tipCurveFactor * 0.8f
+		});
+
+	vertices.push_back({
+		tipPoint.x + forward.x * tipLength * 0.7f - right.x * tipWidth,
+		tipPoint.y + forward.y * tipLength * 0.7f - right.y * tipWidth + up.y * tipCurveFactor * 0.8f,
+		tipPoint.z + forward.z * tipLength * 0.7f - right.z * tipWidth + up.z * tipCurveFactor * 0.8f
+		});
+
+	// Create faces for tip leaflet (front and back)
+	faces.push_back({ tipLeafletBase, tipLeafletBase + 2, tipLeafletBase + 1 });
+	faces.push_back({ tipLeafletBase, tipLeafletBase + 1, tipLeafletBase + 3 });
+	faces.push_back({ tipLeafletBase, tipLeafletBase + 1, tipLeafletBase + 2 });
+	faces.push_back({ tipLeafletBase, tipLeafletBase + 3, tipLeafletBase + 1 });
+
 }
 
 //void TreeToObjConverter::addLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {

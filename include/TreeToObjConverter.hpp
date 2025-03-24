@@ -74,7 +74,8 @@ enum class LeafType {
     SIMPLE,     ///< Simple leaf (diamond shape)
     NEEDLE,     ///< Needle-like (typical of conifers)
     BROAD,      ///< Broad leaf (typical of deciduous trees)
-    PALM        ///< Palm tree leaf
+    PALM,        ///< Palm tree leaf
+    COMPOUND
 };
 
 /**
@@ -162,7 +163,8 @@ public:
             "Simple",
             "Acicular",
             "Frondosas",
-            "Palmera"
+            "Palmera",
+            "Compuesta"
         };
     };
 
@@ -258,6 +260,14 @@ private:
     * @param faces Vector of model faces to which new faces will be added.
     */
     void addPalmLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces);
+    /**
+    * @brief Adds a compound leaf (like fern or ash) to the model.
+    * @param position Position where the leaf will be added.
+    * @param size Size of the leaf.
+    * @param vertices Vector of model vertices to which new vertices will be added.
+    * @param faces Vector of model faces to which new faces will be added.
+    */
+    void addCompoundLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces);
 
     /**
      * @brief Calculates the orientation of a leaf.
