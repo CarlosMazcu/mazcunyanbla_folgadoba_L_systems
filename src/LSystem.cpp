@@ -125,21 +125,30 @@ void LSystem::generateRandomRules() {
 
     if (axiom == 'F') {
         rules[axiom] = F_rules[std::rand() % F_rules.size()];
+        rules[axiom] += "[@]";
     }
     else if (axiom == 'X') {
         rules[axiom] = X_rules[std::rand() % X_rules.size()];
+        rules[axiom] += "[@]";
+
         rules['F'] = "FF"; // X tiende a hacer que F crezca más
     }
     else if (axiom == 'Y') {
         rules[axiom] = Y_rules[std::rand() % Y_rules.size()];
+        rules[axiom] += "[@]";
+
         rules['F'] = "F[+F][-F]"; // Y tiende a hacer ramas más abiertas
     }
     else if (axiom == 'A') {
         rules[axiom] = A_rules[std::rand() % A_rules.size()];
+        rules[axiom] += "[@]";
+
         rules['F'] = "F[@]"; // A favorece la aparición de hojas
     }
     else if (axiom == 'B') {
         rules[axiom] = B_rules[std::rand() % B_rules.size()];
+        rules[axiom] += "[@]";
+
         rules['F'] = "FF[-F][+F]"; // B favorece estructuras más caóticas
     }
 
@@ -188,13 +197,13 @@ void LSystem::nextGuidedStep(int choice) {
     }
     else if (guidedStep == 2) {
         // Paso 3: ¿Añadir hojas?
-        if (choice == 0) { // Si elige "Sí", se añaden hojas (@)
+        //if (choice == 0) { // Si elige "Sí", se añaden hojas (@)
             if (axiom == 'F') rules['F'] += "[@]";
             if (axiom == 'X') rules['X'] += "[@]";
             if (axiom == 'Y') rules['Y'] += "[@]";
             if (axiom == 'A') rules['A'] += "[@]";
             if (axiom == 'B') rules['B'] += "[@]";
-        }
+        //}
     }
 
     guidedStep++; // Avanza al siguiente paso
