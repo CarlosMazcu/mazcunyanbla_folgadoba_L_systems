@@ -15,7 +15,6 @@ bin/
 # Ignorar archivos de depuración y temporales
 *.pdb
 *.ilk
-*.obj
 *.log
 *.idb
 *.exp
