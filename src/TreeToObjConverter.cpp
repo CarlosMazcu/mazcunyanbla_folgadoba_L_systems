@@ -1,4 +1,4 @@
-#include "TreeToObjConverter.hpp"
+Ôªø#include "TreeToObjConverter.hpp"
 
 
 bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, float initialAngle, float initialLength, float initialWidth) {
@@ -276,7 +276,7 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
         }
         case '^': { 
             float angle = angleIncrement * 0.8f * degToRad;
-            // AÒadir variaciÛn aleatoria
+            // A√±adir variaci√≥n aleatoria
             float randomFactor = 1.0f + (((float)rand() / RAND_MAX) * 0.2f - 0.1f);
             angle *= randomFactor;
 
@@ -460,11 +460,11 @@ bool TreeToObjConverter::convertLSystemToObj(const std::string& lSystemString, f
         case '&': // Intercambiar el significado de + y -
             invertTurns = !invertTurns;
             break;
-        case '(': // Disminuir ·ngulo
+        case '(': // Disminuir √°ngulo
             angleIncrement -= 5.0f;
             if (angleIncrement < 1.0f) angleIncrement = 1.0f;
             break;
-        case ')': // Incrementar ·ngulo
+        case ')': // Incrementar √°ngulo
             angleIncrement += 5.0f;
             break;
         }
@@ -501,8 +501,35 @@ bool TreeToObjConverter::generateOBJ(std::atomic<float>& progress) {
     }
 
     progress = 0.06f;
-    objFile << "# ¡rbol 3D generado desde L-System\n";
-    objFile << "# Generado con Tree-to-OBJ Converter\n\n";
+    //objFile << "# √Årbol 3D generado desde L-System\n";
+    objFile << R"(                                                                                                                                                 
+  PPPPPPPPPPPPPPPPP   hhhhhhh                                 lllllll                          GGGGGGGGGGGGGEEEEEEEEEEEEEEEEEEEEEENNNNNNNN        NNNNNNNN
+  P::::::::::::::::P  h:::::h                                 l:::::l                       GGG::::::::::::GE::::::::::::::::::::EN:::::::N       N::::::N
+  P::::::PPPPPP:::::P h:::::h                                 l:::::l                     GG:::::::::::::::GE::::::::::::::::::::EN::::::::N      N::::::N
+  PP:::::P     P:::::Ph:::::h                                 l:::::l                    G:::::GGGGGGGG::::GEE::::::EEEEEEEEE::::EN:::::::::N     N::::::N
+    P::::P     P:::::P h::::h hhhhh   yyyyyyy           yyyyyyyl::::l    ooooooooooo    G:::::G       GGGGGG  E:::::E       EEEEEEN::::::::::N    N::::::N
+    P::::P     P:::::P h::::hh:::::hhh y:::::y         y:::::y l::::l  oo:::::::::::oo G:::::G                E:::::E             N:::::::::::N   N::::::N
+    P::::PPPPPP:::::P  h::::::::::::::hhy:::::y       y:::::y  l::::l o:::::::::::::::oG:::::G                E::::::EEEEEEEEEE   N:::::::N::::N  N::::::N
+    P:::::::::::::PP   h:::::::hhh::::::hy:::::y     y:::::y   l::::l o:::::ooooo:::::oG:::::G    GGGGGGGGGG  E:::::::::::::::E   N::::::N N::::N N::::::N
+    P::::PPPPPPPPP     h::::::h   h::::::hy:::::y   y:::::y    l::::l o::::o     o::::oG:::::G    G::::::::G  E:::::::::::::::E   N::::::N  N::::N:::::::N
+    P::::P             h:::::h     h:::::h y:::::y y:::::y     l::::l o::::o     o::::oG:::::G    GGGGG::::G  E::::::EEEEEEEEEE   N::::::N   N:::::::::::N
+    P::::P             h:::::h     h:::::h  y:::::y:::::y      l::::l o::::o     o::::oG:::::G        G::::G  E:::::E             N::::::N    N::::::::::N
+    P::::P             h:::::h     h:::::h   y:::::::::y       l::::l o::::o     o::::o G:::::G       G::::G  E:::::E       EEEEEEN::::::N     N:::::::::N
+  PP::::::PP           h:::::h     h:::::h    y:::::::y       l::::::lo:::::ooooo:::::o  G:::::GGGGGGGG::::GEE::::::EEEEEEEE:::::EN::::::N      N::::::::N
+  P::::::::P           h:::::h     h:::::h     y:::::y        l::::::lo:::::::::::::::o   GG:::::::::::::::GE::::::::::::::::::::EN::::::N       N:::::::N
+  P::::::::P           h:::::h     h:::::h    y:::::y         l::::::l oo:::::::::::oo      GGG::::::GGG:::GE::::::::::::::::::::EN::::::N        N::::::N
+  PPPPPPPPPP           hhhhhhh     hhhhhhh   y:::::y          llllllll   ooooooooooo           GGGGGG   GGGGEEEEEEEEEEEEEEEEEEEEEENNNNNNNN         NNNNNNN
+                                            y:::::y                                                                                                       
+                                           y:::::y                                                                                                        
+                                          y:::::y                                                                                                         
+                                         y:::::y                                                                                                          
+                                        yyyyyyy                   
+                                                                                        
+          PhyloGen - Procedural Vegetation Generator  | Made by Carlos Mazcu√±√°n and Marc Folgado 
+                    
+                     carlosmazcu.github.io/portfolio/ | marc433.github.io/portfolio/                                                                                                                                                      
+                                                                                                                                                      
+)" << "\n";
 
     std::vector<Point3D> vertices;
     std::vector<Face> faces;
@@ -640,7 +667,7 @@ void TreeToObjConverter::addCylinder(const Segment3D& segment, std::vector<Point
 void TreeToObjConverter::addLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
     if (!generateLeaves) return;
 
-    // Seleccionar el tipo de hoja seg˙n la configuraciÛn actual
+    // Seleccionar el tipo de hoja seg√∫n la configuraci√≥n actual
     switch (leafType) {
     case LeafType::NEEDLE:
         addNeedleLeaf(position, size, vertices, faces);
@@ -662,16 +689,16 @@ void TreeToObjConverter::addLeaf(const Point3D& position, float size, std::vecto
 }
 
 void TreeToObjConverter::calculateLeafOrientation(const Point3D& position, Point3D& right, Point3D& up, Point3D& forward) {
-    // OrientaciÛn aleatoria con preferencia hacia arriba
+    // Orientaci√≥n aleatoria con preferencia hacia arriba
     float yaw = randomFloat(0.0f, 2.0f * M_PI);
-    float pitch = randomFloat(0.0f, M_PI / 3.0f); // M·ximo 60 grados desde la vertical
+    float pitch = randomFloat(0.0f, M_PI / 3.0f); // M√°ximo 60 grados desde la vertical
 
-    // Crear vectores de orientaciÛn b·sicos
+    // Crear vectores de orientaci√≥n b√°sicos
     right = { std::cos(yaw), 0.0f, std::sin(yaw) };
     up = { 0.0f, 1.0f, 0.0f };
     forward = { -std::sin(yaw), 0.0f, std::cos(yaw) };
 
-    // Aplicar inclinaciÛn (pitch)
+    // Aplicar inclinaci√≥n (pitch)
     float cp = std::cos(pitch);
     float sp = std::sin(pitch);
 
@@ -699,25 +726,25 @@ void TreeToObjConverter::calculateLeafOrientation(const Point3D& position, Point
 }
 
 void TreeToObjConverter::addSimpleLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
-    // Calcular vectores de orientaciÛn
+    // Calcular vectores de orientaci√≥n
     Point3D right, up, forward;
     calculateLeafOrientation(position, right, up, forward);
 
-    // AÒadir variaciÛn aleatoria al tamaÒo
+    // A√±adir variaci√≥n aleatoria al tama√±o
     float actualSize = size * randomFloat(0.8f, 1.2f);
 
     int baseIndex = vertices.size();
 
     vertices.push_back(position); // Centro
 
-    // VÈrtice derecho
+    // V√©rtice derecho
     vertices.push_back({
         position.x + right.x * actualSize * 0.5f,
         position.y + right.y * actualSize * 0.5f,
         position.z + right.z * actualSize * 0.5f
         });
 
-    // VÈrtice punta
+    // V√©rtice punta
     vertices.push_back({
         position.x + forward.x * actualSize * 1.5f,
         position.y + forward.y * actualSize * 1.5f,
@@ -742,7 +769,7 @@ void TreeToObjConverter::addSimpleLeaf(const Point3D& position, float size, std:
     faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 4 }); // Cara inferior izquierda
     faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 1 }); // Cara inferior derecha
 
-    // detr·s
+    // detr√°s
     faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 }); // Inversa superior derecha
     faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 }); // Inversa superior izquierda
     faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 3 }); // Inversa inferior izquierda
@@ -1154,7 +1181,7 @@ void TreeToObjConverter::addCompoundLeaf(const Point3D& position, float size, st
 }
 
 //void TreeToObjConverter::addLeaf(const Point3D& position, float size, std::vector<Point3D>& vertices, std::vector<Face>& faces) {
-//    // Õndice base para esta hoja
+//    // √çndice base para esta hoja
 //    int baseIndex = vertices.size();
 //
 //
@@ -1167,12 +1194,12 @@ void TreeToObjConverter::addCompoundLeaf(const Point3D& position, float size, st
 //    float pitch = ((float)rand() / RAND_MAX) * M_PI / 2.0f; // 0-90 grados
 //    float roll = ((float)rand() / RAND_MAX) * M_PI / 4.0f;  // 0-45 grados
 //
-//    // Calcular vectores de orientaciÛn usando los ·ngulos aleatorios
+//    // Calcular vectores de orientaci√≥n usando los √°ngulos aleatorios
 //    float cy = cos(yaw), sy = sin(yaw);
 //    float cp = cos(pitch), sp = sin(pitch);
 //    float cr = cos(roll), sr = sin(roll);
 //
-//    // Matriz de rotaciÛn 3D completa (yaw, pitch, roll)
+//    // Matriz de rotaci√≥n 3D completa (yaw, pitch, roll)
 //    Point3D right, up, forward;
 //
 //    // Vector derecha (right)
@@ -1195,11 +1222,11 @@ void TreeToObjConverter::addCompoundLeaf(const Point3D& position, float size, st
 //    up = normalizeVector(up);
 //    forward = normalizeVector(forward);
 //
-//    // Ahora creamos una forma de hoja m·s compleja con vÈrtices alrededor de la posiciÛn
+//    // Ahora creamos una forma de hoja m√°s compleja con v√©rtices alrededor de la posici√≥n
 //    float leafLength = scaledSize * 1.5f;
 //    float leafWidth = scaledSize * 0.8f;
 //
-//    // VÈrtices de la hoja (forma de diamante alargado)
+//    // V√©rtices de la hoja (forma de diamante alargado)
 //    vertices.push_back(position); // Centro
 //
 //    vertices.push_back({
@@ -1226,13 +1253,13 @@ void TreeToObjConverter::addCompoundLeaf(const Point3D& position, float size, st
 //        position.z - forward.z * leafLength * 0.3f
 //        }); // Base
 //
-//    // AÒadir las caras (ahora triangulares para mejor renderizado)
+//    // A√±adir las caras (ahora triangulares para mejor renderizado)
 //    faces.push_back({ baseIndex, baseIndex + 1, baseIndex + 2 }); // Cara superior derecha
 //    faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 3 }); // Cara superior izquierda
 //    faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 4 }); // Cara inferior izquierda
 //    faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 1 }); // Cara inferior derecha
 //
-//    // AÒadir caras para el reverso de la hoja
+//    // A√±adir caras para el reverso de la hoja
 //    faces.push_back({ baseIndex, baseIndex + 2, baseIndex + 1 }); // Cara superior derecha reversa
 //    faces.push_back({ baseIndex, baseIndex + 3, baseIndex + 2 }); // Cara superior izquierda reversa
 //    faces.push_back({ baseIndex, baseIndex + 4, baseIndex + 3 }); // Cara inferior izquierda reversa
@@ -1273,7 +1300,7 @@ Point3D TreeToObjConverter::normalizeVector(const Point3D& vector) {
     float length = std::sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
 
     if (length < 0.0001f) {
-        return { 0.0f, 0.0f, 0.0f }; // Evitar divisiÛn por cero
+        return { 0.0f, 0.0f, 0.0f }; // Evitar divisi√≥n por cero
     }
 
     return {
